@@ -1,0 +1,2 @@
+# PtorOil
+Zápočtový program
