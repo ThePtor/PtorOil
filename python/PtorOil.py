@@ -57,12 +57,8 @@ class Upgrade:
         self.names = dict
         self.cost = int
         self.column = number
-        self.stats  = {"speed" : 150, #speed/mining speed
-                       "price_1" : 1500, #speed price
-                       "level_1" : 0, #upgrade level 1
-                       "capacity" : 20, #capacity/mining effectivity
-                       "price_2" : 2500,  #level, capacity price
-                       "level_2": 0, #upgrade level 2
+        self.stats  = {"speed" : {"level": 0, "val": [0, 10, 11,], "price": [0, 1999, "MAXLEVEL"]}, #speed/mining speed
+                       "capacity" : {"level": 0, "val": [0, 1, 2,], "price": [250, 500, "MAXLEVEL"]}, #capacity/mining effectivity
                        "quality" : 0, #plot quality
                        "oil" : 0, #remaining oil
                        "cur_speed" : 0, #current mining speed
@@ -75,13 +71,12 @@ class Upgrade:
         self.assign_type(version)
         self.activate()
        
-
     def assign_type(self, version):
         """Assigns default values based on type of builidng"""
-        possible = {"horse": horse,
-                    "silo": silo,
-                    "rig": rig}
-        possible[version](self)
+        possible = {"horse": self.horse,
+                    "silo": self.silo,
+                    "rig": self.rig}
+        possible[version]()
 
     def assign_image(self):
         """Assigns image according to version and upgrade level"""
@@ -132,8 +127,7 @@ class Upgrade:
     def destroy_rig(self):
         self.stats['quality'] = 0
         self.stats['cur_speed'] = 0
-        self.l_description1.config(text=f"{self.names['quality']} {self.stats['quality']:.2f}")
-        self.l_description2.config(text=f"{self.names['cur_speed']} \n {self.stats['cur_speed']:.2f} bar/den")
+        self.update_text()
         self.b_send.config(text=self.names['build'], fg="black", command=self.build_rig)
         
         oil_fields[self.pos[0]][self.pos[1]].but.config(bg="magenta")
@@ -143,72 +137,92 @@ class Upgrade:
         toggle_rig(self)
 
     def update_text(self):
+        """Intentionally empty placeholder function"""
         pass
 
 
-    def level_up(self, upgradename, price, level, but:Button):
-        self.stats[level] += 1
-        self.stats[price] *= 10
-        self.stats[upgradename] += 20
-        if self.stats[level] < levelcap:
-            but.config(text=f"{self.names['upgrade']}\n(${self.stats[price]})")
+    def level_up(self, upgradename):
+        if check_money(upgradename['price'][upgradename['level']]):
+            upgradename['level'] += 1
+            self.update_text()
+            moneycounter.config(text=f"${money}")
+
+
+
+    def horse(self) -> None:
+        """Sets default values for the "horse" type of upgrade."""
+        def goto_city(event=game_end):
+            """Sends horse to city with oil and sells it."""    
+            pass
+
+        def horse_go():
+            """Starts thread that sends horse to town."""
+            t1 = threading.Thread(target=goto_city)
+            t1.start()
+
+        self.names = msg_horse
+        self.text.config(text=self.names['name'], font=("Calibri", 18, "bold"), justify="center")
+        self.b_upgrade1.config(height=2, command=lambda: self.level_up(self.stats['speed']))
+        self.b_upgrade2.config(height=2, command=lambda: self.level_up(self.stats['capacity']))
+        self.b_send.config(text=self.names['sell_cmd'], command=horse_go)
+        self.b_build.config(text=self.names['buy'], command=self.buy)
+
+        def txt():
+            # self.l_upgrade1.config(text=f"{self.names['speed']} \n{self.stats['speed']} s", justify="left")
+            # self.l_upgrade2.config(text=f"{self.names['capacity']} \n{self.stats['capacity']} barelů", justify="left")
+        
+            self.l_upgrade1.config(text=f"{self.names['speed']} \n{self.stats['speed']['val'][self.stats['speed']['level']]} s", justify="left")
+            self.l_upgrade2.config(text=f"{self.names['capacity']} \n{self.stats['capacity']['val'][self.stats['capacity']['level']]} barelů.", justify="left")
+            if self.stats['speed']['level'] < levelcap-1:
+                self.b_upgrade1.config(text=f"{self.names['upgrade']} \n(${self.stats['speed']['price'][self.stats['speed']['level']]})")
+            else:
+                self.b_upgrade1.config(text=f"{self.names['max_level']}", state=DISABLED)
+            if self.stats['capacity']['level'] < levelcap-1:
+                self.b_upgrade2.config(text=f"{self.names['upgrade']} \n(${self.stats['capacity']['price'][self.stats['capacity']['level']]})")
+            else:
+                self.b_upgrade2.config(text=f"{self.names['max_level']}", state=DISABLED)
+
+        self.update_text = txt
         self.update_text()
+        self.text.grid(row=0, column=0, columnspan=2)
+        self.b_build.grid(row=1, column=0, columnspan=2) 
 
 
-
-def horse(obj:Upgrade) -> None:
-    """Sets default values for the "horse" type of upgrade."""
-    def goto_city(event=game_end):
-        """Sends horse to city with oil and sells it."""    
+    def silo(self) -> None:
+        """Sets default values for the "silo" type of upgrade."""
         pass
 
-    def horse_go():
-        """Starts thread that sends horse to town."""
-        t1 = threading.Thread(target=goto_city)
-        t1.start()
-    obj.names = msg_horse
-    obj.text.config(text=obj.names['name'], font=("Calibri", 18, "bold"), justify="center")
-    obj.b_upgrade1.config(text=f"{obj.names['upgrade']} \n(${obj.stats['price_1']})", height=2)
-    obj.b_upgrade2.config(text=f"{obj.names['upgrade']} \n(${obj.stats['price_2']})", height=2)
-    obj.b_send.config(text=obj.names['sell_cmd'], command=horse_go)
-    obj.b_build.config(text=obj.names['buy'], command=obj.buy)
+    def rig(self) -> None:
+        """Sets default values for the "rig" type of upgrade."""
+        self.names = msg_rig    
+        self.text.config(text=self.names['name'], font=("Calibri", 18, "bold"), justify="center")
+        
+        self.b_upgrade1.config(height=2, command=lambda: self.level_up(self.stats['speed']))
+        self.b_upgrade2.config(height=2, command=lambda: self.level_up(self.stats['capacity']))
+        self.b_send.config(text=f"{self.names['build']}", command=self.build_rig)
+        self.b_build.config(text=f"{self.names['buy']}", command=self.buy)
 
-    def txt():
-        obj.l_upgrade1.config(text=f"{obj.names['speed']} \n{obj.stats['speed']} s", justify="left")
-        obj.l_upgrade2.config(text=f"{obj.names['capacity']} \n{obj.stats['capacity']} barelů", justify="left")
-    
-    obj.update_text = txt
-    obj.update_text()
-    obj.text.grid(row=0, column=0, columnspan=2)
-    obj.b_build.grid(row=1, column=0, columnspan=2) 
+        
+
+        def txt():
+            self.l_upgrade1.config(text=f"{self.names['speed']} \n{self.stats['speed']['val'][self.stats['speed']['level']]:.2f} x", justify="left")
+            self.l_upgrade2.config(text=f"{self.names['capacity']} \n{self.stats['capacity']['val'][self.stats['capacity']['level']]} %", justify="left")
+            self.l_description1.config(text=f"{self.names['quality']} {self.stats['quality']:.2f}")
+            self.l_description2.config(text=f"{self.names['cur_speed']} \n{self.stats['cur_speed']} bar/den")
+            if self.stats['speed']['level'] < levelcap - 1:
+                self.b_upgrade1.config(text=f"{self.names['upgrade']} \n(${self.stats['speed']['price'][self.stats['speed']['level']]})")
+            else:
+                self.b_upgrade1.config(text=f"{self.names['max_level']}", state=DISABLED)
+            if self.stats['capacity']['level'] < levelcap - 1:
+                self.b_upgrade2.config(text=f"{self.names['upgrade']} \n(${self.stats['capacity']['price'][self.stats['capacity']['level']]})")
+            else:
+                self.b_upgrade2.config(text=f"{self.names['max_level']}", state=DISABLED)
 
 
-def silo(obj:Upgrade) -> None:
-    """Sets default values for the "silo" type of upgrade."""
-    pass
-
-def rig(obj:Upgrade) -> None:
-    """Sets default values for the "rig" type of upgrade."""
-    obj.names = msg_rig    
-    obj.text.config(text=obj.names['name'], font=("Calibri", 18, "bold"), justify="center")
-    
-    obj.b_upgrade1.config(text=f"{obj.names['upgrade']} \n(${obj.stats['price_1']})", height=2, command=lambda: obj.level_up('speed','price_1','level_1', obj.b_upgrade1))
-    obj.b_upgrade2.config(text=f"{obj.names['upgrade']} \n(${obj.stats['price_2']})", height=2, command=lambda: obj.level_up('capacity','price_2','level_2', obj.b_upgrade2))
-    obj.b_send.config(text=f"{obj.names['build']}", command=obj.build_rig)
-    obj.b_build.config(text=f"{obj.names['buy']}", command=obj.buy)
-
-    
-
-    def txt():
-        obj.l_upgrade1.config(text=f"{obj.names['speed']} \n {obj.stats['speed']:.2f}x", justify="left")
-        obj.l_upgrade2.config(text=f"{obj.names['capacity']} \n +{obj.stats['capacity']} %", justify="left")
-        obj.l_description1.config(text=f"{obj.names['quality']} {obj.stats['quality']:.2f}")
-        obj.l_description2.config(text=f"{obj.names['cur_speed']} \n {obj.stats['cur_speed']:.2f} bar/den")
-    
-    obj.update_text = txt
-    obj.update_text()
-    obj.text.grid(row=0, column=0, columnspan=2)
-    obj.b_build.grid(row=1, column=0, columnspan=2)
+        self.update_text = txt
+        self.update_text()
+        self.text.grid(row=0, column=0, columnspan=2)
+        self.b_build.grid(row=1, column=0, columnspan=2)
 
     
 
@@ -243,7 +257,7 @@ msg_horse = {
     "sell_cmd" : "Prodat ropu!",
     "selling" : "Na cestě do města.",
     "back" : "Na cestě zpět.",
-    "max_level" : "Maximální \núroveň",
+    "max_level" : "MAXLEVEL",
 }
 
 msg_rig = {
@@ -256,7 +270,7 @@ msg_rig = {
     "capacity" : "Efektivita: ",
     "quality" : "Kvalita pozemku: ",
     "cur_speed" : "Aktuální rychlost těžby: ",
-    "max_level" : "Maximální \núroveň",
+    "max_level" : "MAXLEVEL",
 
 }
 
@@ -279,8 +293,6 @@ print(cfg_values["sizex"])
 # x = Tile(okno, (0,0), 1500, 5)
 # okno.mainloop()
 
-
-
 #Default variables
 
 mainframe = Tk()
@@ -293,8 +305,8 @@ game_end = threading.Event()
 
 #Startup variables
 
-money = 2000
-moneycounter = Label(mainframe, text=f"${money}", font=("Calibri", 35))
+money = 20000
+moneycounter = Label(mainframe, text=f"${money}", font=("Algerian", 35))
 levelcap = 3
 seed = 3
 mapsize = 10
@@ -304,19 +316,18 @@ oil_fields = [[Tile(map_frame, (x,y), 500, noise([x/mapsize,y/mapsize])) for y i
 
 # x = Upgrade(y, "horse", 1)
 # x2 = Upgrade(y, "horse", 2)
-moneycounter.pack()
-map_frame.pack()
-horse_frame.pack()
-rig_frame.pack()
+moneycounter.grid(column=1, columnspan=2, row=0)
+map_frame.grid(column=0, row=0, rowspan=5)
+horse_frame.grid(column=1, row=1)
+rig_frame.grid(column=1, row=2)
 
 herd = [Upgrade(horse_frame, "horse", x) for x in range(5)]
 herd[0].buy()
 rig_field = [Upgrade(rig_frame, "rig", x) for x in range(5)]
 rig_field[0].buy()
 
-
 # print(x.cost)
-print(cfg_values)
+# print(cfg_values)
 mainframe.mainloop()
 game_end.set()
 print("3")
