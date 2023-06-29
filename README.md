@@ -44,23 +44,23 @@ Zápočtový program
 - [ ] Ropné silo
 
 #### Ropná věž
-- [ ] Okénko s věží
-- [ ] Umí se postavit na políčku
+- [x] Okénko s věží
+- [x] Umí se postavit na políčku
 - [ ] Těžba ropy
-- [ ] *Optional: Upgrady - rychlost těžby*
-- [ ] Zbourej věž
+- [x] *Optional: Upgrady - rychlost těžby*
+- [x] Zbourej věž
 
 #### Kůň
-- [ ] Okénko s koněm
+- [x] Okénko s koněm
 - [ ] Naber ropu ze sila
 - [ ] Ve městě prodej ropu
-- [ ] *Optional: Upgrady - rychlost koně, kapacita cisterny*
+- [x] *Optional: Upgrady - rychlost koně, kapacita cisterny*
 
 #### Políčka na mapě
-- [ ] Generátor políček s rozdělením ropy
+- [x] Generátor políček s rozdělením ropy
 - [ ] Prohledej políčko
 - [ ] *Optional: Upgrady hledání políček*
-- [ ] Postav na políčku věž, odstraň z políčka věž
+- [x] Postav na políčku věž, odstraň z políčka věž
 
 #### Ropné silo
 - [ ] Okénko se silem
