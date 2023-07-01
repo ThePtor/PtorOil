@@ -41,7 +41,7 @@ class Tile:
 
 class Upgrade:
     """Class for upgradable buildings - horse, silo, mining rig."""
-    def __init__(self, master, version, number) -> None:
+    def __init__(self, master, version, number=0) -> None:
         self.box = Frame(master)
         self.b_build = Button(self.box, image=emptyim, compound="bottom")
         self.b_upgrade1 = Button(self.box) #image=emptyim, compound="bottom")
@@ -57,15 +57,15 @@ class Upgrade:
         self.names = dict
         self.cost = int
         self.column = number
-        self.stats  = {"speed" : {"level": 0, "val": [0, 10, 11,], "price": [0, 1999, "MAXLEVEL"]}, #speed/mining speed
-                       "capacity" : {"level": 0, "val": [0, 1, 2,], "price": [250, 500, "MAXLEVEL"]}, #capacity/mining effectivity
+        self.stats  = {"speed" : {"level": 0, "val": [0, 10, 11, 12, 13], "price": [0, 1999, 5000, 6900, 1230]}, #speed/mining speed
+                       "capacity" : {"level": 0, "val": [0, 1, 2, 500, 56], "price": [250, 500, 1000, 250, 600]}, #capacity/mining effectivity
                        "quality" : 0, #plot quality
-                       "oil" : 0, #remaining oil
+                       "oil" : 200, #remaining oil
                        "cur_speed" : 0, #current mining speed
                        } 
+        self.timer  = 0
         self.upgrades = int
         self.pos = (-1,-1)
-        self.level = 1
         self.available = False
         self.active = False
         self.assign_type(version)
@@ -92,19 +92,27 @@ class Upgrade:
     def dig_oil(self):
         pass
 
-    def buy(self):       
-        self.available = True
-        self.b_build.grid_remove()
-        self.l_upgrade1.grid(row=1, column=0, sticky="w")
-        self.b_upgrade1.grid(row=1, column=1)
-        self.l_upgrade2.grid(row=2, column=0, sticky="w")
-        self.b_upgrade2.grid(row=2, column=1)
-        self.b_send.grid(row=3, column=0, columnspan=2)
+    def buy(self, first=False):       
+        toggle = False
+        if first:
+            toggle = True
+        if not toggle:
+            toggle = check_money(self.stats['capacity']['price'][0])
+        if toggle:
+            self.available = True
+            self.b_build.grid_remove()
+            self.l_upgrade1.grid(row=1, column=0, sticky="w")
+            self.b_upgrade1.grid(row=1, column=1)
+            self.l_upgrade2.grid(row=2, column=0, sticky="w")
+            self.b_upgrade2.grid(row=2, column=1)
+            if self.version != "silo":
+                self.b_send.grid(row=3, column=0, columnspan=2)
 
-        if self.version == "rig":
-            self.l_description1.grid(row=4, column=0, columnspan=2)
-            self.l_description2.grid(row=5, column=0, columnspan=2)
-            toggle_rig(self)
+            if self.version == "rig":
+                self.l_description1.grid(row=4, column=0, columnspan=2)
+                self.l_description2.grid(row=5, column=0, columnspan=2)
+                toggle_rig(self)
+    
 
     def build_rig(self):
         # Builds mining rig and enables mining funcitonality.
@@ -142,7 +150,7 @@ class Upgrade:
 
 
     def level_up(self, upgradename):
-        if check_money(upgradename['price'][upgradename['level']]):
+        if check_money(upgradename['price'][upgradename['level']+1]):
             upgradename['level'] += 1
             self.update_text()
             moneycounter.config(text=f"${money}")
@@ -165,7 +173,7 @@ class Upgrade:
         self.b_upgrade1.config(height=2, command=lambda: self.level_up(self.stats['speed']))
         self.b_upgrade2.config(height=2, command=lambda: self.level_up(self.stats['capacity']))
         self.b_send.config(text=self.names['sell_cmd'], command=horse_go)
-        self.b_build.config(text=self.names['buy'], command=self.buy)
+        self.b_build.config(text=f"{self.names['buy']}\n(${self.stats['capacity']['price'][0]})", command=self.buy)
 
         def txt():
             # self.l_upgrade1.config(text=f"{self.names['speed']} \n{self.stats['speed']} s", justify="left")
@@ -173,12 +181,12 @@ class Upgrade:
         
             self.l_upgrade1.config(text=f"{self.names['speed']} \n{self.stats['speed']['val'][self.stats['speed']['level']]} s", justify="left")
             self.l_upgrade2.config(text=f"{self.names['capacity']} \n{self.stats['capacity']['val'][self.stats['capacity']['level']]} barelů.", justify="left")
-            if self.stats['speed']['level'] < levelcap-1:
-                self.b_upgrade1.config(text=f"{self.names['upgrade']} \n(${self.stats['speed']['price'][self.stats['speed']['level']]})")
+            if self.stats['speed']['level'] < levelcap:
+                self.b_upgrade1.config(text=f"{self.names['upgrade']} \n(${self.stats['speed']['price'][self.stats['speed']['level']+1]})")
             else:
                 self.b_upgrade1.config(text=f"{self.names['max_level']}", state=DISABLED)
-            if self.stats['capacity']['level'] < levelcap-1:
-                self.b_upgrade2.config(text=f"{self.names['upgrade']} \n(${self.stats['capacity']['price'][self.stats['capacity']['level']]})")
+            if self.stats['capacity']['level'] < levelcap:
+                self.b_upgrade2.config(text=f"{self.names['upgrade']} \n(${self.stats['capacity']['price'][self.stats['capacity']['level']+1]})")
             else:
                 self.b_upgrade2.config(text=f"{self.names['max_level']}", state=DISABLED)
 
@@ -190,7 +198,32 @@ class Upgrade:
 
     def silo(self) -> None:
         """Sets default values for the "silo" type of upgrade."""
-        pass
+        self.names = msg_silo    
+        self.text.config(text=self.names['name'], font=("Calibri", 18, "bold"), justify="center")
+        
+        self.b_upgrade1.config(height=2, command=lambda: self.level_up(self.stats['speed']))
+        self.b_upgrade2.config(height=2, command=lambda: self.level_up(self.stats['capacity']))
+
+        
+
+        def txt():
+            self.l_upgrade1.config(text=f"{self.names['speed']} \n{self.stats['speed']['val'][self.stats['speed']['level']]:.2f} x", justify="left")
+            self.l_upgrade2.config(text=f"{self.names['capacity']} \n{self.stats['oil']}/{self.stats['capacity']['val'][self.stats['capacity']['level']]} bar", justify="left")
+
+            if self.stats['speed']['level'] < 2*levelcap:
+                self.b_upgrade1.config(text=f"{self.names['upgrade']} \n(${self.stats['speed']['price'][self.stats['speed']['level']+1]})")
+            else:
+                self.b_upgrade1.config(text=f"{self.names['max_level']}", state=DISABLED)
+            if self.stats['capacity']['level'] < 2*levelcap:
+                self.b_upgrade2.config(text=f"{self.names['upgrade']} \n(${self.stats['capacity']['price'][self.stats['capacity']['level']+1]})")
+            else:
+                self.b_upgrade2.config(text=f"{self.names['max_level']}", state=DISABLED)
+
+
+        self.update_text = txt
+        self.update_text()
+        self.text.grid(row=0, column=0, columnspan=2)
+        self.b_build.grid(row=1, column=0, columnspan=2)
 
     def rig(self) -> None:
         """Sets default values for the "rig" type of upgrade."""
@@ -200,7 +233,7 @@ class Upgrade:
         self.b_upgrade1.config(height=2, command=lambda: self.level_up(self.stats['speed']))
         self.b_upgrade2.config(height=2, command=lambda: self.level_up(self.stats['capacity']))
         self.b_send.config(text=f"{self.names['build']}", command=self.build_rig)
-        self.b_build.config(text=f"{self.names['buy']}", command=self.buy)
+        self.b_build.config(text=f"{self.names['buy']}\n(${self.stats['capacity']['price'][0]})", command=self.buy)
 
         
 
@@ -209,12 +242,12 @@ class Upgrade:
             self.l_upgrade2.config(text=f"{self.names['capacity']} \n{self.stats['capacity']['val'][self.stats['capacity']['level']]} %", justify="left")
             self.l_description1.config(text=f"{self.names['quality']} {self.stats['quality']:.2f}")
             self.l_description2.config(text=f"{self.names['cur_speed']} \n{self.stats['cur_speed']} bar/den")
-            if self.stats['speed']['level'] < levelcap - 1:
-                self.b_upgrade1.config(text=f"{self.names['upgrade']} \n(${self.stats['speed']['price'][self.stats['speed']['level']]})")
+            if self.stats['speed']['level'] < levelcap:
+                self.b_upgrade1.config(text=f"{self.names['upgrade']} \n(${self.stats['speed']['price'][self.stats['speed']['level']+1]})")
             else:
                 self.b_upgrade1.config(text=f"{self.names['max_level']}", state=DISABLED)
-            if self.stats['capacity']['level'] < levelcap - 1:
-                self.b_upgrade2.config(text=f"{self.names['upgrade']} \n(${self.stats['capacity']['price'][self.stats['capacity']['level']]})")
+            if self.stats['capacity']['level'] < levelcap:
+                self.b_upgrade2.config(text=f"{self.names['upgrade']} \n(${self.stats['capacity']['price'][self.stats['capacity']['level']+1]})")
             else:
                 self.b_upgrade2.config(text=f"{self.names['max_level']}", state=DISABLED)
 
@@ -277,8 +310,9 @@ msg_rig = {
 msg_silo = {
     "name" : "Silo na ropu",
     "upgrade" : "Upgrade",
-    "fill" : "Aktuální ropa: ",
-    "capacity" : "Kapacita ropy: ",
+    "speed" : "Limit přetečení: ",
+    "capacity" : "Ropa: ",
+    "max_level" : "MAXLEVEL",
 
 }
 
@@ -300,6 +334,7 @@ mainframe = Tk()
 map_frame = Frame(mainframe)
 rig_frame = Frame(mainframe)
 horse_frame = Frame(mainframe)
+silo_frame = Frame(mainframe)
 emptyim = PhotoImage()
 game_end = threading.Event()
 
@@ -307,7 +342,7 @@ game_end = threading.Event()
 
 money = 20000
 moneycounter = Label(mainframe, text=f"${money}", font=("Algerian", 35))
-levelcap = 3
+levelcap = 2
 seed = 3
 mapsize = 10
 pos_cache = None
@@ -316,15 +351,19 @@ oil_fields = [[Tile(map_frame, (x,y), 500, noise([x/mapsize,y/mapsize])) for y i
 
 # x = Upgrade(y, "horse", 1)
 # x2 = Upgrade(y, "horse", 2)
-moneycounter.grid(column=1, columnspan=2, row=0)
+
+moneycounter.grid(column=1, columnspan=1, row=0)
+silo_frame.grid(column=2, row=0)
 map_frame.grid(column=0, row=0, rowspan=5)
 horse_frame.grid(column=1, row=1)
 rig_frame.grid(column=1, row=2)
 
+oil_silo = Upgrade(silo_frame, "silo")
+oil_silo.buy(True)
 herd = [Upgrade(horse_frame, "horse", x) for x in range(5)]
-herd[0].buy()
+herd[0].buy(True)
 rig_field = [Upgrade(rig_frame, "rig", x) for x in range(5)]
-rig_field[0].buy()
+rig_field[0].buy(True)
 
 # print(x.cost)
 # print(cfg_values)
