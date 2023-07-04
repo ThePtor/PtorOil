@@ -13,7 +13,7 @@ class Tile:
     """Class for oil tiles on map"""
     def __init__(self, master, position, oil, quality) -> None:
         
-        self.but = Button(master, command=self.reveal, width=3, height=3)
+        self.but = Button(master, command=self.reveal, width=6*baseunit, height=6*baseunit, image=emptyim, compound='bottom', padx=0, pady=0)
         
         self.active = False
         self.pos = position
@@ -57,7 +57,7 @@ class Upgrade:
         self.names = dict
         self.cost = int
         self.column = number
-        self.stats  = {"speed" : {"level": 0, "val": [0, 10, 11, 12, 13], "price": [0, 1999, 5000, 6900, 1230]}, #speed/mining speed
+        self.stats  = {"speed" : {"level": 0, "val": [15, 10, 6, 4, 3], "price": [0, 1999, 5000, 6900, 12300]}, #speed/mining speed
                        "capacity" : {"level": 0, "val": [0, 1, 2, 500, 56], "price": [250, 500, 1000, 250, 600]}, #capacity/mining effectivity
                        "quality" : 0, #plot quality
                        "oil" : 200, #remaining oil
@@ -90,9 +90,25 @@ class Upgrade:
         
 
     def dig_oil(self):
+        """Rig function that digs oil"""
         pass
 
-    def buy(self, first=False):       
+    def sell_oil(self):
+        """Horse function that sells oil."""
+        global money, soldoil
+        profit = self.stats['oil'] * price
+        soldoil += self.stats['oil']
+        self.stats['oil'] = 0
+        money += profit
+        moneycounter.config(text=f"${money:.0f}")
+        return profit
+    
+    def spillage(self):
+        """Silo function that fines player if silo overflows."""
+        pass
+
+    def buy(self, first=False):
+        """Function that buys selected Upgrade instance, if first is True buying is free."""       
         toggle = False
         if first:
             toggle = True
@@ -153,21 +169,43 @@ class Upgrade:
         if check_money(upgradename['price'][upgradename['level']+1]):
             upgradename['level'] += 1
             self.update_text()
-            moneycounter.config(text=f"${money}")
+            moneycounter.config(text=f"${money:.0f}")
 
+    def goto_city(self):
+        """does one step towards city to sell oil"""
+        self.timer -= 1
+        if self.timer <= 0:
+            self.kill_horse()
+        elif self.timer <= (self.stats['speed']['val'][self.stats['speed']['level']]/3):
+            self.b_send.config(text=f"{self.names['back']} ({self.timer} dní)")
+        elif self.timer <= (self.stats['speed']['val'][self.stats['speed']['level']]/3 + 1):
+            self.b_send.config(text=f"+${self.sell_oil()}")
+        else:
+            self.b_send.config(text=f"{self.names['forward']} ({self.timer} dní)")
+        #UNFINISHED
+        print(self.timer)
+    
 
+    def kill_horse(self):
+        self.active = False        
+        self.b_send.config(text=self.names['sell_cmd'], state=ACTIVE)
+        # UNFINISHED
 
     def horse(self) -> None:
         """Sets default values for the "horse" type of upgrade."""
-        def goto_city(event=game_end):
-            """Sends horse to city with oil and sells it."""    
-            pass
 
         def horse_go():
-            """Starts thread that sends horse to town."""
-            t1 = threading.Thread(target=goto_city)
-            t1.start()
+            """Switches horse into active state!"""
+            self.active = True
+            self.timer = self.stats['speed']['val'][self.stats['speed']['level']]
+            amt = min(self.stats['capacity']['val'][self.stats['capacity']['level']], oil_silo.stats['oil'])
+            self.stats['oil'] = amt
+            oil_silo.stats['oil'] -= amt
+            oil_silo.update_text()
+            self.b_send.config(state=DISABLED, text=f"{self.names['forward']}")
+            # UNFINISHED            
 
+        #self.stats = horse_stats
         self.names = msg_horse
         self.text.config(text=self.names['name'], font=("Calibri", 18, "bold"), justify="center")
         self.b_upgrade1.config(height=2, command=lambda: self.level_up(self.stats['speed']))
@@ -179,7 +217,7 @@ class Upgrade:
             # self.l_upgrade1.config(text=f"{self.names['speed']} \n{self.stats['speed']} s", justify="left")
             # self.l_upgrade2.config(text=f"{self.names['capacity']} \n{self.stats['capacity']} barelů", justify="left")
         
-            self.l_upgrade1.config(text=f"{self.names['speed']} \n{self.stats['speed']['val'][self.stats['speed']['level']]} s", justify="left")
+            self.l_upgrade1.config(text=f"{self.names['speed']} \n{self.stats['speed']['val'][self.stats['speed']['level']]} dní", justify="left")
             self.l_upgrade2.config(text=f"{self.names['capacity']} \n{self.stats['capacity']['val'][self.stats['capacity']['level']]} barelů.", justify="left")
             if self.stats['speed']['level'] < levelcap:
                 self.b_upgrade1.config(text=f"{self.names['upgrade']} \n(${self.stats['speed']['price'][self.stats['speed']['level']+1]})")
@@ -200,7 +238,8 @@ class Upgrade:
         """Sets default values for the "silo" type of upgrade."""
         self.names = msg_silo    
         self.text.config(text=self.names['name'], font=("Calibri", 18, "bold"), justify="center")
-        
+        #self.stats = silo_stats
+
         self.b_upgrade1.config(height=2, command=lambda: self.level_up(self.stats['speed']))
         self.b_upgrade2.config(height=2, command=lambda: self.level_up(self.stats['capacity']))
 
@@ -227,6 +266,7 @@ class Upgrade:
 
     def rig(self) -> None:
         """Sets default values for the "rig" type of upgrade."""
+        # self.stats = rig_stats
         self.names = msg_rig    
         self.text.config(text=self.names['name'], font=("Calibri", 18, "bold"), justify="center")
         
@@ -272,14 +312,37 @@ def toggle_rig(obj:Upgrade):
         obj.b_send.config(state=DISABLED)
 
 def check_money(price):
+    """Checks if player has enough money, if so, subtracts that amount from player and returns True"""
     global money
     if price <= money:
         money -= price
-        moneycounter.config(text=f"${money}")
+        moneycounter.config(text=f"${money:.0f}")
         return True
     else:
         return False
+    
+def update_price():
+    global pricedelta, price
+    r_price = noise((-1,-1, 3*day/yearlen))
+    price = 50 + (100*r_price + pricedelta)
+    cur_price.config(text=f"${price:.2f}/bar")
+    
+def gametick():
+    global day
+    day += 1
+    # for rig in rig_field:
+    #     if rig.active:
+    #         rig.dig_oil()
+    for hrs in herd:
+        if hrs.active:
+            hrs.goto_city()
+    update_price()
 
+    time.sleep(1/5)
+    
+def timer():
+    while not game_end.is_set():
+        gametick()
 
 msg_horse = {
     "name" : "Kůň",
@@ -288,9 +351,10 @@ msg_horse = {
     "speed" : "Doba cesty: ",
     "capacity" : "Kapacita nákladu: ",
     "sell_cmd" : "Prodat ropu!",
-    "selling" : "Na cestě do města.",
+    "forward" : "Na cestě do města.",
     "back" : "Na cestě zpět.",
     "max_level" : "MAXLEVEL",
+
 }
 
 msg_rig = {
@@ -338,25 +402,36 @@ silo_frame = Frame(mainframe)
 emptyim = PhotoImage()
 game_end = threading.Event()
 
+baseunit = 5
+day = 0
+yearlen = 365
 #Startup variables
-
 money = 20000
-moneycounter = Label(mainframe, text=f"${money}", font=("Algerian", 35))
+moneycounter = Label(mainframe, text=f"${money:.0f}", font=("Algerian", 35))
+pricedelta = 0
+price = 0
+
+cur_price = Label(mainframe, text=f"${price:.2f}/bar", font=("CMU Serif", 24))
+soldoil = 0
+oilbuffer = 0
+spillage_severity = 1
 levelcap = 2
 seed = 3
 mapsize = 10
 pos_cache = None
-noise = PerlinNoise(3, seed)
+# noise = PerlinNoise(2, seed)
+noise = PerlinNoise(4, random.random())
 oil_fields = [[Tile(map_frame, (x,y), 500, noise([x/mapsize,y/mapsize])) for y in range(mapsize)] for x in range(mapsize)]
 
 # x = Upgrade(y, "horse", 1)
 # x2 = Upgrade(y, "horse", 2)
 
 moneycounter.grid(column=1, columnspan=1, row=0)
-silo_frame.grid(column=2, row=0)
+cur_price.grid(column=1, row=1)
+silo_frame.grid(column=2, row=0, rowspan=2)
 map_frame.grid(column=0, row=0, rowspan=5)
-horse_frame.grid(column=1, row=1)
-rig_frame.grid(column=1, row=2)
+horse_frame.grid(column=1, row=2)
+rig_frame.grid(column=1, row=3)
 
 oil_silo = Upgrade(silo_frame, "silo")
 oil_silo.buy(True)
@@ -367,6 +442,13 @@ rig_field[0].buy(True)
 
 # print(x.cost)
 # print(cfg_values)
+update_price()
+t1 =  threading.Thread(target=timer)
+t1.start()
 mainframe.mainloop()
 game_end.set()
-print("3")
+print("69")
+# vallist = [50+75*noise((-1,-1,(2*x)/yearlen))+25*noise((11,11,(5*x)/yearlen)) for x in range(yearlen)]
+# print(sum(vallist)/len(vallist))
+# plt.plot([x for x in range(yearlen)], vallist)
+# plt.show()
