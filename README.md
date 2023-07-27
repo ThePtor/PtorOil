@@ -34,36 +34,36 @@ Zápočtový program
 - [ ] Implementace náhodných funkcí - perlin noise
 - [ ] Timer kola
 - [ ] Fungování ingame ekonomiky
-- [ ] Objekty
+- [x] Objekty
 - [ ] Grafika
 
 ### Objekty
-- [ ] Ropná věž
-- [ ] Kůň
-- [ ] Políčka na mapě
-- [ ] Ropné silo
+- [x] Ropná věž
+- [x] Kůň
+- [x] Políčka na mapě
+- [x] Ropné silo
 
 #### Ropná věž
 - [x] Okénko s věží
 - [x] Umí se postavit na políčku
-- [ ] Těžba ropy
+- [x] Těžba ropy
 - [x] *Optional: Upgrady - rychlost těžby*
 - [x] Zbourej věž
 
 #### Kůň
 - [x] Okénko s koněm
-- [ ] Naber ropu ze sila
-- [ ] Ve městě prodej ropu
+- [x] Naber ropu ze sila
+- [x] Ve městě prodej ropu
 - [x] *Optional: Upgrady - rychlost koně, kapacita cisterny*
 
 #### Políčka na mapě
 - [x] Generátor políček s rozdělením ropy
-- [ ] Prohledej políčko
+- [x] Prohledej políčko
 - [ ] *Optional: Upgrady hledání políček*
 - [x] Postav na políčku věž, odstraň z políčka věž
 
 #### Ropné silo
-- [ ] Okénko se silem
-- [ ] Silo ukazuje stav naplnění
-- [ ] Příbytek a úbytek ropy
-- [ ] *Optional: Pokuta za přeplnění sila*
+- [x] Okénko se silem
+- [x] Silo ukazuje stav naplnění
+- [x] Příbytek a úbytek ropy
+- [x] *Optional: Pokuta za přeplnění sila*

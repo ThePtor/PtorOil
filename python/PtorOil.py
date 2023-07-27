@@ -50,7 +50,14 @@ class Tile:
             pos_cache = self.pos
             self.but.config(background="blue")
         toggle_rigs()
-
+    
+    def close_tile(self, mode=0):
+        """mode 0 = rig destroyed
+            mode 1 = tile mined"""
+        if mode == 0:
+            self.but.config(bg='cyan', text=f"{self.qual:.2f}\n???")
+        elif mode == 1:
+            self.but.config(bg='white', text=f"{self.qual:.2f}\n{self.oil:.0f}")
 
 class Upgrade:
     """Class for upgradable buildings - horse, silo, mining rig."""
@@ -199,10 +206,7 @@ class Upgrade:
         self.update_text()
         self.b_send.config(text=self.names['build'], fg="black", command=self.build_rig)
         
-        if mode == 0:
-            oil_fields[self.pos[0]][self.pos[1]].but.config(bg="magenta", text="???")
-        elif mode == 1:
-            oil_fields[self.pos[0]][self.pos[1]].but.config(bg="white", fg="black", text=f"{oil_fields[self.pos[0]][self.pos[1]].oil:.0f}")
+        oil_fields[self.pos[0]][self.pos[1]].close_tile(mode)
         self.pos = (-1, -1)
         self.available = True
         self.active = False
@@ -215,7 +219,7 @@ class Upgrade:
         spd = self.stats['speed']
         
         mined = self.stats['quality'] * spd['val'][spd['level']] * (1+ (3**oil_noise((self.pos[0]/mapsize, self.pos[1]/mapsize, day/7))))
-        print(mined)
+        # print(mined)
         decrease = mined/efi['val'][efi['level']]
         
         if self.stats['oil'] < decrease:
@@ -288,7 +292,7 @@ class Upgrade:
         else:
             self.b_send.config(text=f"{self.names['forward']} ({self.timer} dní)")
         #UNFINISHED
-        print(self.timer)
+        # print(self.timer)
     
     def kill_horse(self):
         self.active = False        
@@ -343,11 +347,28 @@ class Upgrade:
     def add_oil(self, amt):
         """Method of adding oil into oilsilo"""
         self.stats['oil'] += amt
-        # Unfinished!!!
+        if self.stats['oil'] > self.stats['capacity']['val'][self.stats['capacity']['level']]:
+            over = self.stats['oil'] - self.stats['capacity']['val'][self.stats['capacity']['level']]
+            self.stats['oil'] = self.stats['capacity']['val'][self.stats['capacity']['level']]
+            fine = self.spillage(over)
+        else:
+            self.timer = max(self.timer-1, 0)
+            if self.timer == 0:
+                self.stats['cur_speed'] /= 2
+            fine = 0
+        return fine
 
-    def spillage(self):
+    def spillage(self, amt):
         """Silo function that fines player if silo overflows."""
-        pass
+        self.stats['cur_speed'] += amt
+        self.timer += 1
+        fine = 0
+        if self.timer > self.stats['speed']['val'][self.stats['speed']['level']]:
+            self.timer -= 1
+            fine = self.stats['cur_speed']/2
+            self.stats['cur_speed'] /= 2
+            print(f"Spillage {fine:.2f}")
+        return fine
 
 
 def toggle_rigs():  
@@ -386,7 +407,7 @@ def gametick():
         if rig.active:
             dug_oil += rig.dig_oil()
             rig.update_text()
-    oil_silo.add_oil(dug_oil)
+    spill_fine = oil_silo.add_oil(dug_oil)
     # oil_silo.stats['oil'] += 10
     oil_silo.update_text()
     for hrs in herd:
@@ -533,7 +554,7 @@ money = 20000
 moneycounter = Label(gameframe, text=f"${money:.0f}", font=("Algerian", 35))
 pricedelta = 0
 price = 0
-gamespeed = 2
+gamespeed = 1
 
 cur_price = Label(gameframe, text=f"${price:.2f}/bar", font=("CMU Serif", 24))
 soldoil = 0
@@ -577,10 +598,10 @@ mainframe.mainloop()
 game_end.set()
 print("69")
 leng = mapsize
-vallist = [[4**(2*oil_noise((x/leng, y/leng))) for y in range(leng)] for x in range(leng)]
+# vallist = [[4**(2*oil_noise((x/leng, y/leng))) for y in range(leng)] for x in range(leng)]
 # print(sum(vallist)/len(vallist))
-plt.imshow(vallist, cmap='gray')
-plt.show()
-vallist = [[1*(1.2+qual_noise((x/leng, y/leng))) for y in range(leng)] for x in range(leng)]
-plt.imshow(vallist, cmap='gray')
-plt.show()
+# plt.imshow(vallist, cmap='gray')
+# plt.show()
+# vallist = [[1*(1.2+qual_noise((x/leng, y/leng))) for y in range(leng)] for x in range(leng)]
+# plt.imshow(vallist, cmap='gray')
+# plt.show()
