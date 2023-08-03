@@ -15,7 +15,7 @@ class Tile:
     """Class for oil tiles on map"""
     def __init__(self, master, position, size) -> None:
     
-        self.but = Button(master, command=self.reveal, width=6*baseunit, height=6*baseunit, image=emptyim, compound='bottom', padx=0, pady=0)
+        self.but = Button(master, command=self.reveal, width=10*baseunit, height=10*baseunit, image=emptyim, compound='bottom', padx=0, pady=0)
         self.active = False
         self.pos = position
         self.size = size
@@ -107,10 +107,10 @@ class Upgrade:
     def activate(self):
         """Packs upgrade box into Tk window"""
         self.box.grid(column=self.column, row=0)
-        self.box.grid_rowconfigure(0, weight=1)
-        self.box.grid_columnconfigure(0, weight=1)
-        self.box.grid(sticky="we")
-
+        # self.box.grid_rowconfigure(0, weight=1)
+        # self.box.grid_columnconfigure(0, weight=1)
+        
+        
     def update_text(self):
         """Intentionally empty placeholder function"""
         pass
@@ -533,19 +533,29 @@ print(cfg_values["sizex"])
 
 #Default variables
 mainframe = Tk()
-gameframe = Frame(mainframe)
+mainframe.geometry(f"{unitsize*160}x{unitsize*90}")
+gameframe = Frame(mainframe, bg="green", width=unitsize*160, height=unitsize*90)
+# gameframe.grid_propagate(0)
 menu = Frame(mainframe)
 setup = Frame(mainframe)
 endscreen = Frame(mainframe)
-
-map_frame = Frame(gameframe)
-rig_frame = Frame(gameframe)
-horse_frame = Frame(gameframe)
-silo_frame = Frame(gameframe)
 emptyim = PhotoImage()
+
+# gameframe layout
+map_frame = Frame(gameframe)
+map_frame.config(width=unitsize*60, height=unitsize*60)
+# map_frame.propagate(False)
+# for x in range(16):
+#     gameframe.grid_columnconfigure(x, weight=1, uniform="s")
+# for y in range(9):
+#     gameframe.grid_rowconfigure(y, weight=1, uniform="s")
+rig_frame = Frame(gameframe, bg="yellow", height=5*unitsize, width=80*unitsize)
+horse_frame = Frame(gameframe, bg="red")
+silo_frame = Frame(gameframe, bg="blue")
+
 game_end = threading.Event()
 
-baseunit = 5
+baseunit = 4
 day = 0
 yearlen = 365
 
@@ -568,6 +578,12 @@ qual_noise = PerlinNoise(4, seed)
 oil_noise = PerlinNoise(2, 2*seed)
 # noise = PerlinNoise(4, random.random())
 
+# Log variables
+total_mined = 0
+total_sold = 0
+spillage_fine = 0
+loan = 0
+
 load_configs()
 
 oil_fields = [[Tile(map_frame, (x,y), (mapsize, mapsize)) for y in range(mapsize)] for x in range(mapsize)]
@@ -575,12 +591,16 @@ oil_fields = [[Tile(map_frame, (x,y), (mapsize, mapsize)) for y in range(mapsize
 # x = Upgrade(y, "horse", 1)
 # x2 = Upgrade(y, "horse", 2)
 
-moneycounter.grid(column=1, columnspan=1, row=0)
-cur_price.grid(column=1, row=1)
-silo_frame.grid(column=2, row=0, rowspan=2)
-map_frame.grid(column=0, row=0, rowspan=5)
-horse_frame.grid(column=1, row=2)
-rig_frame.grid(column=1, row=3)
+moneycounter.grid(column=0, row=1, rowspan=2, columnspan=6)
+cur_price.grid(column=9, row=0, rowspan=3, columnspan=6)
+silo_frame.grid(column=6, row=0, rowspan=2, columnspan=4)
+map_frame.grid(column=0, row=3, rowspan=6, columnspan=6)
+horse_frame.grid(column=6, row=3, rowspan=3, columnspan=10, sticky=NSEW)
+rig_frame.grid(column=6, row=6, rowspan=3, columnspan=10, sticky=NSEW)
+
+for x in range(5):
+    horse_frame.grid_columnconfigure(x, uniform="a", weight=1)
+    rig_frame.grid_columnconfigure(x, uniform="a", weight=1)
 
 oil_silo = Upgrade(silo_frame, "silo")
 oil_silo.buy(True)
@@ -593,8 +613,9 @@ rig_field[0].buy(True)
 update_price()
 t1 =  threading.Thread(target=timer)
 t1.start()
-gameframe.pack()
+gameframe.grid(sticky=NSEW)
 mainframe.mainloop()
+
 game_end.set()
 print("69")
 leng = mapsize
