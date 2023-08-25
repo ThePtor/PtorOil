@@ -1,4 +1,8 @@
-# Tady nekdy bude program
+# PtorOil
+# Zápočtový program
+# Pavel Rak
+# LS 2022/23
+
 import json
 import threading
 import time
@@ -7,6 +11,7 @@ import random
 import math
 from tkinter import *
 from tkinter import ttk
+from tkinter import font
 from PIL import Image, ImageTk
 from perlin_noise import PerlinNoise
 from matplotlib import pyplot as plt
@@ -15,7 +20,7 @@ class Tile:
     """Class for oil tiles on map"""
     def __init__(self, master, position, size) -> None:
     
-        self.but = Button(master, command=self.reveal, width=10*baseunit, height=10*baseunit, image=emptyim, compound='bottom', padx=0, pady=0)
+        self.but = Button(master, font=txt_s, command=self.reveal, width=20*baseunit, height=20*baseunit, image=emptyim, compound='bottom', padx=0, pady=0,)
         self.active = False
         self.pos = position
         self.size = size
@@ -23,12 +28,22 @@ class Tile:
         self.oil = self.get_oil()
         self.mineable = False
         self.but.grid(row=self.pos[0], column=self.pos[1])
+        #self.but.config(bg=rgbtohex(0, 180, min(int(self.qual*150), 255)))
     
     def reveal(self):
-        self.but.config(background="green", text=f"{self.qual:.2f}")
-        print(self.oil)
-        self.mineable = True
-        self.but.config(command=self.tile_pass)
+        global dowsers
+        res = False
+        if dowsers > 0:
+            dowsers -= 1 
+            res = True
+        else:
+            res = check_money(plot_price)
+        if res:
+            self.but.config(background="green", text=f"{self.qual:.2f}")
+            print(self.oil)
+            self.mineable = True
+            self.but.config(command=self.tile_pass)
+            self.but.config(bg=rgbtohex(0, 180, min(int(self.qual*150), 255)))
 
     def get_qual(self):
         quality = (1.2+qual_noise((self.pos[0]/self.size[0], self.pos[1]/self.size[1])))
@@ -43,26 +58,28 @@ class Tile:
         global pos_cache
         if pos_cache == self.pos:
             pos_cache = None
-            self.but.config(background="green")
+            self.but.config(relief=RAISED)
         else:
             if pos_cache:
-                oil_fields[pos_cache[0]][pos_cache[1]].but.config(bg="green")
+                oil_fields[pos_cache[0]][pos_cache[1]].but.config(relief=RAISED)
             pos_cache = self.pos
-            self.but.config(background="blue")
+            self.but.config(relief=SUNKEN)
         toggle_rigs()
     
     def close_tile(self, mode=0):
         """mode 0 = rig destroyed
             mode 1 = tile mined"""
         if mode == 0:
-            self.but.config(bg='cyan', text=f"{self.qual:.2f}\n???")
+            self.but.config(text=f"{self.qual:.2f}\n???")
         elif mode == 1:
-            self.but.config(bg='white', text=f"{self.qual:.2f}\n{self.oil:.0f}")
+            self.but.config(text=f"{self.qual:.2f}\n{self.oil:.0f}")
+        self.but.config(bg=rgbtohex(0, 180, int(self.qual*150)))
 
 class Upgrade:
     """Class for upgradable buildings - horse, silo, mining rig."""
     def __init__(self, master, version, number=0) -> None:
-        self.box = Frame(master)
+        self.box = Frame(master, height=100*baseunit, width=78*baseunit)
+        self.box.grid_propagate(False)
         self.b_build = Button(self.box, image=emptyim, compound="bottom")
         self.b_upgrade1 = Button(self.box) #image=emptyim, compound="bottom")
         self.b_upgrade2 = Button(self.box) #image=emptyim, compound="bottom")
@@ -107,6 +124,8 @@ class Upgrade:
     def activate(self):
         """Packs upgrade box into Tk window"""
         self.box.grid(column=self.column, row=0)
+        self.box.grid_columnconfigure(0, weight=2)
+        self.box.grid_columnconfigure(1, weight=1)
         # self.box.grid_rowconfigure(0, weight=1)
         # self.box.grid_columnconfigure(0, weight=1)
         
@@ -117,8 +136,10 @@ class Upgrade:
 
 
     def level_up(self, upgradename):
+        global demand
         if check_money(upgradename['price'][upgradename['level']+1]):
             upgradename['level'] += 1
+            demand += demand_step
             self.update_text()
             moneycounter.config(text=f"${money:.0f}")
 
@@ -162,7 +183,8 @@ class Upgrade:
 
         
 
-        def txt():
+        def txt_s():
+            """Modifies text to fit the rig structure"""
             self.l_upgrade1.config(text=f"{self.names['speed']} \n{self.stats['speed']['val'][self.stats['speed']['level']]:.2f} x", justify="left")
             self.l_upgrade2.config(text=f"{self.names['capacity']} \n{self.stats['capacity']['val'][self.stats['capacity']['level']]:.0%}", justify="left")
             self.l_description1.config(text=f"{self.names['quality']} {self.stats['quality']:.2f}")
@@ -177,7 +199,7 @@ class Upgrade:
                 self.b_upgrade2.config(text=f"{self.names['max_level']}", state=DISABLED)
 
 
-        self.update_text = txt
+        self.update_text = txt_s
         self.update_text()
         self.text.grid(row=0, column=0, columnspan=2)
         self.b_build.grid(row=1, column=0, columnspan=2)
@@ -260,12 +282,12 @@ class Upgrade:
         self.b_send.config(text=self.names['sell_cmd'], command=horse_go)
         self.b_build.config(text=f"{self.names['buy']}\n(${self.stats['capacity']['price'][0]})", command=self.buy)
 
-        def txt():
+        def txt_s():
             # self.l_upgrade1.config(text=f"{self.names['speed']} \n{self.stats['speed']} s", justify="left")
             # self.l_upgrade2.config(text=f"{self.names['capacity']} \n{self.stats['capacity']} barelů", justify="left")
         
-            self.l_upgrade1.config(text=f"{self.names['speed']} \n{self.stats['speed']['val'][self.stats['speed']['level']]} dní", justify="left")
-            self.l_upgrade2.config(text=f"{self.names['capacity']} \n{self.stats['capacity']['val'][self.stats['capacity']['level']]} barelů.", justify="left")
+            self.l_upgrade1.config(text=f"{self.names['speed']} \n{self.stats['speed']['val'][self.stats['speed']['level']]} {msg_general['day']}", justify="left")
+            self.l_upgrade2.config(text=f"{self.names['capacity']} \n{self.stats['capacity']['val'][self.stats['capacity']['level']]} {msg_general['bar']}", justify="left")
             if self.stats['speed']['level'] < self.stats['speed']['cap']:
                 self.b_upgrade1.config(text=f"{self.names['upgrade']} \n(${self.stats['speed']['price'][self.stats['speed']['level']+1]})")
             else:
@@ -275,7 +297,7 @@ class Upgrade:
             else:
                 self.b_upgrade2.config(text=f"{self.names['max_level']}", state=DISABLED)
 
-        self.update_text = txt
+        self.update_text = txt_s
         self.update_text()
         self.text.grid(row=0, column=0, columnspan=2)
         self.b_build.grid(row=1, column=0, columnspan=2)
@@ -286,7 +308,7 @@ class Upgrade:
         if self.timer <= 0:
             self.kill_horse()
         elif self.timer <= (self.stats['speed']['val'][self.stats['speed']['level']]/3):
-            self.b_send.config(text=f"{self.names['back']} ({self.timer} dní)")
+            self.b_send.config(text=f"{self.names['back']} ({self.timer} {msg_general['day']})")
         elif self.timer <= (self.stats['speed']['val'][self.stats['speed']['level']]/3 + 1):
             self.b_send.config(text=f"+${self.sell_oil():.2f}")
         else:
@@ -323,8 +345,8 @@ class Upgrade:
 
         
 
-        def txt():
-            self.l_upgrade1.config(text=f"{self.names['speed']} \n{self.stats['speed']['val'][self.stats['speed']['level']]:.2f} x", justify="left")
+        def txt_s():
+            self.l_upgrade1.config(text=f"{self.names['speed']} \n{self.stats['speed']['val'][self.stats['speed']['level']]:.2f} {msg_general['day']}", justify="left")
             self.l_upgrade2.config(text=f"{self.names['capacity']} \n{self.stats['oil']:.2f}/{self.stats['capacity']['val'][self.stats['capacity']['level']]} bar", justify="left")
 
             self.bar.config(value=self.stats['oil'], maximum=self.stats['capacity']['val'][self.stats['capacity']['level']])    
@@ -339,7 +361,7 @@ class Upgrade:
                 self.b_upgrade2.config(text=f"{self.names['max_level']}", state=DISABLED)
 
 
-        self.update_text = txt
+        self.update_text = txt_s
         self.update_text()
         self.text.grid(row=0, column=0, columnspan=2)
         self.b_build.grid(row=1, column=0, columnspan=2)
@@ -370,6 +392,8 @@ class Upgrade:
             print(f"Spillage {fine:.2f}")
         return fine
 
+def rgbtohex(r,g,b):
+    return f"#{r:02x}{g:02x}{b:02x}"
 
 def toggle_rigs():  
     for well in rig_field:
@@ -393,15 +417,72 @@ def check_money(price):
         return False
 
 #Game round functions    
+def correct_price():
+    global soldoil, oilbuffer, oiltimer
+    if soldoil != 0:
+        oiltimer += 1
+    drop = min(soldoil, 2**(oiltimer/2))
+    rise = 0
+    soldoil -= drop
+    oilbuffer += drop
+    cor = oilbuffer * pricedrop
+    if oiltimer > 4:    
+        rise = min(oilbuffer, (oiltimer)**(0.5+demand))
+        oilbuffer -= rise
+    # print(f"Drop in price {drop:.2f}, Rise in price {rise:.2f}, {soldoil:.2f}, {oilbuffer:.2f}")
+    if (soldoil == 0) and (oilbuffer == 0):
+        oiltimer = 0
+    r_price = qual_noise((-1,-1, 3*day/yearlen))
+    price = 50 + (100*r_price - cor)
+    if price < 0:
+        price = abs(1 / price)
+
+    return price
+
 def update_price():
     global pricedelta, price
-    r_price = qual_noise((-1,-1, 3*day/yearlen))
-    price = 50 + (100*r_price + pricedelta)
+    price = correct_price()
+    pricelog.append(price)
     cur_price.config(text=f"${price:.2f}/bar")
-    
+
+def get_date():
+    date = day%365
+    date += 1
+    res = ""
+    if date <= 31:
+        res = f"{date-0}. {msg_general['jan']}"
+    elif date <= 59:
+        res = f"{date-31}. {msg_general['feb']}"
+    elif date <= 90:
+        res = f"{date-59}. {msg_general['mar']}"
+    elif date <= 120:
+        res = f"{date-90}. {msg_general['apr']}"
+    elif date <= 151:
+        res = f"{date-120}. {msg_general['may']}"
+    elif date <= 181:
+        res = f"{date-151}. {msg_general['jun']}"
+    elif date <= 212:
+        res = f"{date-181}. {msg_general['jul']}"
+    elif date <= 243:
+        res = f"{date-212}. {msg_general['aug']}"
+    elif date <= 273:
+        res = f"{date-243}. {msg_general['sep']}"
+    elif date <= 304:
+        res = f"{date-273}. {msg_general['oct']}"
+    elif date <= 334:
+        res = f"{date-304}. {msg_general['nov']}"
+    else:
+        res = f"{date-334}. {msg_general['dec']}"
+    return res
+
 def gametick():
-    global day
+    global day, dowsers
     day += 1
+    if (day % dowserdelay) == 0:
+        dowsers += 1
+    cur_date.config(text=get_date())
+    if day > yearlen:
+        end_game()
     dug_oil = 0
     for rig in rig_field:
         if rig.active:
@@ -460,14 +541,78 @@ def load_configs():
     except FileNotFoundError:
         pass
 
+def start_menu(master):
+    mainim = Label(master, text="PtorOil", font=txt_s, image=emptyim, compound="bottom", height=baseunit*50, width=baseunit*120)
+    start_game = Button(master, text="Quick Game", command=game_launch)
+    quit_game = Button(master, text="Quit", command=mainframe.destroy)
+    mainim.pack()
+    start_game.pack()
+    quit_game.pack()
+    
+
+def game_launch():
+    menu.grid_remove()
+    gameframe.grid()
+
+    t1 = threading.Thread(target=timer)
+    t1.start()
+
+
+def end_game():
+    global money
+    print(day)
+    game_end.set()
+    gameframe.grid_remove()
+    endsell = 0
+    for horse in herd:
+        if horse.timer > 0:
+            endsell += horse.stats['oil']
+    money += (endsell*price)
+    log['money'] = money
+    endnotice = Label(endscreen, text="Konec hry!")
+    results = Label(endscreen, text=f"Skóre: {log['money']- log['loan']:.0f}")
+    endscreen.grid_rowconfigure(0, weight=3)
+    endscreen.grid_rowconfigure(1, weight=1)
+    endnotice.grid(row=0)
+    results.grid(row=1)
+    endscreen.grid()
+    
+
+
+# Dimensions functions
+def gamewindow_grid(frm:Frame):
+    frm.grid_columnconfigure(0, weight=6)
+    frm.grid_columnconfigure(1, weight=3)
+    frm.grid_columnconfigure(2, weight=7)
+    frm.grid_rowconfigure(0, weight=1)
+    frm.grid_rowconfigure(1, weight=2)
+    frm.grid_rowconfigure(2, weight=3)
+    frm.grid_rowconfigure(3, weight=3)
 
 # Language dictionaries
+msg_general = {
+    "jan" : "Leden",
+    "feb" : "Únor",
+    "mar" : "Březen",
+    "apr" : "Duben",
+    "may" : "Květen",
+    "jun" : "Červen",
+    "jul" : "Červenec", 
+    "aug" : "Srpen",
+    "sep" : "Září", 
+    "oct" : "Říjen", 
+    "nov" : "Listopad",
+    "dec" : "Prosinec",
+    "bar" : "barelů",
+    "day" : "dní",
+    }
+
 msg_horse = {
     "name" : "Kůň",
     "buy": "Koupit koně",
     "upgrade": "Upgrade",
     "speed" : "Doba cesty: ",
-    "capacity" : "Kapacita nákladu: ",
+    "capacity" : "Kapacita: ",
     "sell_cmd" : "Prodat ropu!",
     "forward" : "Na cestě do města.",
     "back" : "Na cestě zpět.",
@@ -520,9 +665,8 @@ silo_cfg = {"speed" : {"level": 0, "cap": 4, "val": [15, 10, 6, 4, 3], "price": 
             } 
 
 
-
-unitsize = 8
-cfg_values = json.load(open("./data/config.json","r", encoding="UTF-8"))
+with open("./data/config.json","r", encoding="UTF-8") as cfg_data:
+    cfg_values = json.load(cfg_data)
 print(cfg_values["sizex"])
 # config = {"riglimit" : 5}
 # rigs = [0,1]
@@ -531,58 +675,107 @@ print(cfg_values["sizex"])
 # x = Tile(okno, (0,0), 1500, 5)
 # okno.mainloop()
 
+baseunit = 2
 #Default variables
+money = 2500 #starting money
+dowsers = 3 #starting dowsers
+dowserdelay = 15 #delay between free dowsers
+plot_price = 1000 #reveal price without dowser
+day = 0 #current day
+pricedelta = 0 
+price = 0 #corrent oil price
+oilbuffer = 0 #oil lowering the price
+oiltimer = 0 
+soldoil = 0 #sold oil buffer
+seed = 3 
+spillage_severity = 1 #spillage fine severity
+demand = 0 #speed of price recovery after 
+demand_step = 0.01 #effect of upgrade on price recovery
+pricedrop = 0.3 #how much sold barrel affects price
+pricelog = []
+# Log variables
+
+log = {'oilbuffer' : 0,
+       'total_mined' : 0,
+       'total_sold' : 0,
+       'spillage_fine' : 0,
+       'loan' : 0,
+       'money' : 0,
+       }
+
+gamespeed = 10
 mainframe = Tk()
-mainframe.geometry(f"{unitsize*160}x{unitsize*90}")
-gameframe = Frame(mainframe, bg="green", width=unitsize*160, height=unitsize*90)
+mainframe.geometry(f"{baseunit*640}x{baseunit*360}")
+gameframe = Frame(mainframe, width=baseunit*640, height=baseunit*360,)# bg="green")
 # gameframe.grid_propagate(0)
 menu = Frame(mainframe)
 setup = Frame(mainframe)
 endscreen = Frame(mainframe)
 emptyim = PhotoImage()
 
+txt_s = font.Font(family="TkDefaultFont", size=4+baseunit*4)
+txt_m = font.Font(family="Algerian")
+txt_l = font.Font(family="TkDefaultFont")
+
+
 # gameframe layout
-map_frame = Frame(gameframe)
-map_frame.config(width=unitsize*60, height=unitsize*60)
-# map_frame.propagate(False)
-# for x in range(16):
-#     gameframe.grid_columnconfigure(x, weight=1, uniform="s")
-# for y in range(9):
-#     gameframe.grid_rowconfigure(y, weight=1, uniform="s")
-rig_frame = Frame(gameframe, bg="yellow", height=5*unitsize, width=80*unitsize)
-horse_frame = Frame(gameframe, bg="red")
-silo_frame = Frame(gameframe, bg="blue")
+date_frame = Frame(gameframe, width=240*baseunit, height=40*baseunit)
+bank_frame = Frame(gameframe, width=240*baseunit, height=80*baseunit)
+map_frame = Frame(gameframe, height=240*baseunit, width=240*baseunit)
+rig_frame = Frame(gameframe, width=400*baseunit, height=120*baseunit)#, bg="yellow")
+horse_frame = Frame(gameframe, width=400*baseunit, height=120*baseunit)#, bg="red")
+silo_frame = Frame(gameframe, width=120*baseunit, height=120*baseunit)#, bg="blue")
+
 
 game_end = threading.Event()
+# gamewindow_grid(gameframe)
+date_frame.grid(row=0, column=0, rowspan=1, columnspan=1, sticky=NSEW)
+bank_frame.grid(row=1, column=0, rowspan=1, columnspan=1, sticky=N)
+map_frame.grid(row=2, column=0, rowspan=2, columnspan=1, sticky=N)
+silo_frame.grid(row=0, column=1, rowspan=2, columnspan=1, sticky=N)
+horse_frame.grid(row=2, column=1, rowspan=1, columnspan=2, sticky=N)
+rig_frame.grid(row=3, column=1, rowspan=1, columnspan=2, sticky=N)
 
-baseunit = 4
-day = 0
+gameframe.grid_propagate(False)
+date_frame.grid_propagate(False)
+bank_frame.grid_propagate(False)
+map_frame.grid_propagate(False)
+horse_frame.grid_propagate(False)
+rig_frame.grid_propagate(False)
+
+date_frame.grid_columnconfigure(0, weight=1)
+date_frame.grid_rowconfigure(0, weight=1)
+bank_frame.grid_columnconfigure(0, weight=3)
+bank_frame.grid_rowconfigure(0, weight=1)
+bank_frame.grid_columnconfigure(1, weight=1)
+for x in range(5):
+    rig_frame.grid_columnconfigure(x, weight=1)
+    horse_frame.grid_columnconfigure(x, weight=1)
+# Labels
+moneycounter = Label(bank_frame, text=f"${money:.0f}", font=("Algerian", 35))
+cur_price = Label(date_frame, text=f"${price:.2f}/bar", font=("CMU Serif", 24), padx=baseunit*5)
+cur_date = Label(date_frame, text=get_date(), font=("CMU Serif", 24), padx=baseunit*5)
+moneycounter.grid()
+cur_price.grid(row=0, column=0, sticky=W)
+cur_date.grid(row=0, column=1, sticky=E)
+
 yearlen = 365
 
 #Startup variables
-money = 20000
-moneycounter = Label(gameframe, text=f"${money:.0f}", font=("Algerian", 35))
-pricedelta = 0
-price = 0
-gamespeed = 1
 
-cur_price = Label(gameframe, text=f"${price:.2f}/bar", font=("CMU Serif", 24))
-soldoil = 0
-oilbuffer = 0
-spillage_severity = 1
+
+
+
+
+
 levelcap = 2
-seed = 30
+seed = random.random()
 mapsize = 10
 pos_cache = None
 qual_noise = PerlinNoise(4, seed)
 oil_noise = PerlinNoise(2, 2*seed)
 # noise = PerlinNoise(4, random.random())
 
-# Log variables
-total_mined = 0
-total_sold = 0
-spillage_fine = 0
-loan = 0
 
 load_configs()
 
@@ -591,16 +784,9 @@ oil_fields = [[Tile(map_frame, (x,y), (mapsize, mapsize)) for y in range(mapsize
 # x = Upgrade(y, "horse", 1)
 # x2 = Upgrade(y, "horse", 2)
 
-moneycounter.grid(column=0, row=1, rowspan=2, columnspan=6)
-cur_price.grid(column=9, row=0, rowspan=3, columnspan=6)
-silo_frame.grid(column=6, row=0, rowspan=2, columnspan=4)
-map_frame.grid(column=0, row=3, rowspan=6, columnspan=6)
-horse_frame.grid(column=6, row=3, rowspan=3, columnspan=10, sticky=NSEW)
-rig_frame.grid(column=6, row=6, rowspan=3, columnspan=10, sticky=NSEW)
 
-for x in range(5):
-    horse_frame.grid_columnconfigure(x, uniform="a", weight=1)
-    rig_frame.grid_columnconfigure(x, uniform="a", weight=1)
+
+
 
 oil_silo = Upgrade(silo_frame, "silo")
 oil_silo.buy(True)
@@ -608,12 +794,13 @@ herd = [Upgrade(horse_frame, "horse", x) for x in range(5)]
 herd[0].buy(True)
 rig_field = [Upgrade(rig_frame, "rig", x) for x in range(5)]
 rig_field[0].buy(True)
-# print(x.cost)
-# print(cfg_values)
+
 update_price()
-t1 =  threading.Thread(target=timer)
-t1.start()
-gameframe.grid(sticky=NSEW)
+start_menu(menu)
+menu.grid()
+# gameframe.grid()
+mainframe.grid_columnconfigure(0, weight=1)
+mainframe.grid_rowconfigure(0, weight=1)
 mainframe.mainloop()
 
 game_end.set()
@@ -626,3 +813,5 @@ leng = mapsize
 # vallist = [[1*(1.2+qual_noise((x/leng, y/leng))) for y in range(leng)] for x in range(leng)]
 # plt.imshow(vallist, cmap='gray')
 # plt.show()
+plt.plot(pricelog)
+plt.show()
