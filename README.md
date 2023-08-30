@@ -71,6 +71,40 @@ Pro ukládání savů je potřeba implementovat způsob, jak uložit a načíst 
 
 Prostor pro zefektivnění je snížení počtu slovníku z počtu množství vylepšovatelných stavech na jeden vzorový pro každý druh stavby, ze kterého se  by se čerpaly hodnoty příslušné pro každý level upgradu. 
 
+# Programátorská dokumentace
+
+## Popis programu
+PtorOil se skládá z jednoho hlavního programu PtorOil.py a modulu settings.py, ve kterém jsou uloženy upravitelné hodnoty pro konfiguraci hry. Program umí načíst konfigurační soubory jednotlivých staveb ve formátu .json a obrázky pomocí knihovny Pillow. Grafické rozhraní je zpracováno pomocí knihovny Tkinter a náhodně generované hodnoty využívají modul PerlinNoise.
+
+Hlavní objekty v programu (hře) jsou implementovány z vlastních tříd **Tile** a **Upgrade** jejichž způsob fungování je popsán dále.
+
+## Class: Tile
+Dílky této třidy tvoří mapu ropných nalezišť. Reprezentace v okně je udělána pomocí widgetu Button, jehož funkce se mění v závislosti na okolnostech. Každý dílek obsahuje proměnné pro kvalitu a zásobu ropy, jejichž hodnota je určena výstupem funkce get_qual(), resp. get_oil() na základě jejich pozice. 
+
+Pozice dílku Tile je určena pomocí dvojice souřadnic na vstupu, ta určuje i pozici, na které bude dílek vykreslen. Další funkce příslušné této třídě jsou funkce na odhalení dílku a ukončení těžby (uzavření) daného dílku. 
+
+### Funkce: get_qual() & get_oil()
+Tyto funkce využívají pozici dílku, ta je vstupem do 2D generátoru šumu PerlinNoise, který vrací hodnotu mezi (-1,1). Tato hodnota je dále škálována vzorcem pro potřeby hry.
+
+## Class: Upgrade
+Tato třída zajištuje fungování vylepšitelných dílků v programu. V současné implementaci existují tři příchutě této třídy. Vzor pro tuto třídu zahrnuje defaultně 2 sloty pro funkční upgrady a jejich popisy, jedno volné tlačítko, 2 obecné popisy, slot pro název a ikonu. Informace a hodnoty nejen o upgradech jsou uloženy ve slovníku self.stats, konfiguraci tohoto slovníku lze načíst z .json souboru. Funkce assign_type() přiřadí příslušnou příchuť dané instanci této třídy.
+
+### Postup pro tvorbu příchutí této třídy
+1. Vytvořte slovník podle předlohy v self.stats, vložte své hodnoty a tyto hodnoty uložte do proměnné, ze které se budou tyto vzory kopírovat. Také je rozumné vytvořit slovník pro překlad textu použitého v příchuti do modulu settings.py.
+2. V případě implementace konfiguračního souboru .json pro danou příchuť rozšiřte funkci load_configs() tak, aby načetla i tento soubor.
+3. Vytvořte funkci pro generaci nové třídy a přidejte ji do slovníku ve funkci assign_type() pod klíčem s názvem této příchuti. 
+4. Tato funkce by měla obsahovat výšku rámečku s instancí, dále nastavení textů a tlačítek a odkazem na tuto funkci nastavit místo funkce self.update_text().
+5. Vložení nově přidaných a upravených widgetů do tabulky self.box aby se vykreslily.
+6. Vytvořit vlastní funkce které ingeragují s touto třídou a vykreslit instance této třidy do hlavního okna.
+
+## Úpravy nastavení
+Proměnné upravitelné uživatelem jsou uloženy v modulu settings.py, který se nachází ve stejné složce jako hlavní program. U každé je zhruba okomentováno, co daná proměnná dělá. V tomto modulu jsou uložené též i slovníky, které jsou využívány pro výpis textu na obrazovce. Další nastavitelné proměnné a slovníky by měly být přidávány do tohoto modulu.
+
+## Průběh programu
+V programu je hlavní funkce gametick(), která se provádí každý jeden herní tick. Tedy případné úpravy a nové přídavky, které se mají aktualizovat každý herní tick je vhodné přidávat do této funkce. Běh této funkce se zastaví, je-li okno zavřeno, nebo doběhne-li hra do konce.
+
+Funkce, která se spustí na konci hry je end_game(), tedy úpravy toho, co udělat na konci hry by měly být přidávány do této funkce.
+
 # ToDo list
 - [ ] Dostat zápočet
 
