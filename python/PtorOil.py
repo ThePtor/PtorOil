@@ -8,13 +8,13 @@ import threading
 import time
 import copy
 import random
-import math
+# import math
 from tkinter import *
 from tkinter import ttk
 from tkinter import font
 from PIL import Image, ImageTk
 from perlin_noise import PerlinNoise
-from matplotlib import pyplot as plt
+# from matplotlib import pyplot as plt
 
 class Tile:
     """Class for oil tiles on map"""
@@ -416,6 +416,7 @@ class Upgrade:
         return fine
 
 def update_img(self:Upgrade):
+   """Updates reference to image based on upgrade levels."""
    posx = min(self.stats['speed']['level'], imgcap-1)
    posy = min(self.stats['capacity']['level'], imgcap-1)
    if self.version == "silo":
@@ -428,7 +429,8 @@ def rgbtohex(r,g,b):
     """Conversion function for RGB values into friendy hex representation."""
     return f"#{r:02x}{g:02x}{b:02x}"
 
-def toggle_rigs():  
+def toggle_rigs():
+    """Toggles ability to build rigs on available rigs."""  
     for well in rig_field:
         if well.available:
             toggle_rig(well)
@@ -616,6 +618,7 @@ def get_score():
     return score
 
 def get_log():
+    """Creates string output from log files according to general message dictionary"""
     string = ""
     for x in log:
         string += f"{msg_general[x]} {log[x]:.2f} \n"
@@ -740,16 +743,16 @@ silo_cfg = {"speed" : {"level": 0, "cap": 4, "val": [0, 3, 7, 10, 14], "price": 
             } 
 
 
-with open("./data/config.json","r", encoding="UTF-8") as cfg_data:
-    cfg_values = json.load(cfg_data)
-print(cfg_values["sizex"])
+# with open("./data/config.json","r", encoding="UTF-8") as cfg_data:
+#     cfg_values = json.load(cfg_data)
+# print(cfg_values["sizex"])
 
-baseunit = 3 #base unit for sizing the windows
+baseunit = 2 #base unit for sizing the windows
 imgcap = 3 #max level for images showing
 
 
 
-#Default variables
+#Modifiable variables
 money = 2500 #starting money
 dowsers = 3 #starting dowsers
 dowserdelay = 15 #delay between free dowsers
@@ -757,21 +760,22 @@ yearlen = 365 # length of game in days
 gamespeed = 1 # speed of game (days/s)
 plot_base = 1000 #reveal price without dowser
 plot_price = 0 #starting plot purchase price
+seed = 3 # default seed
+spillage_severity = 40 #spilage fine per barel spilled
+mining_speed = 0.7 # global mining speed
+oil_richness = 1 # global oil field richness
+mapsize = 10 # size of oil map
+demand = 0 #speed of price recovery after selling oil
+demand_step = 0.01 #effect of upgrade on price recovery
+pricedrop = 0.3 #how much sold barrel affects price ($/barrel)
+# pricelog = []
+
+#Other default variables
 day = 0 #current day
 price = 0 #corrent oil price
 oilbuffer = 0 #oil lowering the price
 oiltimer = 0 #market timer for oil
 soldoil = 0 #sold oil buffer
-seed = 3 # default seed
-spillage_severity = 40 #spilage fine per barel spilled
-mining_speed = 0.7 # global mining speed
-oil_richness = 1 # global oil field richness
-mapsize = 15 # size of oil map
-demand = 0 #speed of price recovery after 
-demand_step = 0.01 #effect of upgrade on price recovery
-pricedrop = 0.3 #how much sold barrel affects price
-# pricelog = []
-
 seed = random.random()
 pos_cache = None
 qual_noise = PerlinNoise(4, seed)
@@ -807,6 +811,7 @@ txt_s = font.Font(family="TkTextFont", size=2+baseunit*4) #small text
 txt_m = font.Font(family="Algerian", size=15+baseunit*15) #large text
 txt_l = font.Font(family="CMU Serif", size=8+baseunit*8) #medium text
 
+mainframe.iconphoto(False, images['tile'])
 
 # gameframe layout
 date_frame = Frame(gameframe, width=240*baseunit, height=40*baseunit)
@@ -875,8 +880,8 @@ mainframe.grid_columnconfigure(0, weight=1)
 mainframe.grid_rowconfigure(0, weight=1)
 mainframe.mainloop()
 
-game_end.set()
-print("69")
+game_end.set() #sets event that stops the year progression if the window is closed
+# print("69")
 # leng = mapsize
 # vallist = [[4**(2*oil_noise((x/leng, y/leng))) for y in range(leng)] for x in range(leng)]
 # print(sum(vallist)/len(vallist))
