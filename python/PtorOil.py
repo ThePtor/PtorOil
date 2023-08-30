@@ -31,19 +31,24 @@ class Tile:
         #self.but.config(bg=rgbtohex(0, 180, min(int(self.qual*150), 255)))
     
     def reveal(self):
-        global dowsers
+        global dowsers, plot_price
         res = False
         if dowsers > 0:
             dowsers -= 1 
             res = True
+            if dowsers > 0:
+                plot_price = 0
+            else:
+                plot_price = plot_base
         else:
             res = check_money(plot_price)
         if res:
-            self.but.config(background="green", text=f"{self.qual:.2f}")
-            print(self.oil)
+            # self.but.config(background="green", text=f"{self.qual:.2f}")
+            # print(self.oil)
             self.mineable = True
             self.but.config(command=self.tile_pass)
-            self.but.config(bg=rgbtohex(0, 180, min(int(self.qual*150), 255)))
+            self.but.config(bg=rgbtohex(0, 180, int(min(max((((self.qual-0.7)*255), 0)), 255))))
+            dowser_label.config(text=f"{msg_general['available']} {dowsers}\n {msg_general['plot']} ${plot_price}")
 
     def get_qual(self):
         quality = (1.2+qual_noise((self.pos[0]/self.size[0], self.pos[1]/self.size[1])))
@@ -69,16 +74,16 @@ class Tile:
     def close_tile(self, mode=0):
         """mode 0 = rig destroyed
             mode 1 = tile mined"""
-        if mode == 0:
-            self.but.config(text=f"{self.qual:.2f}\n???")
-        elif mode == 1:
-            self.but.config(text=f"{self.qual:.2f}\n{self.oil:.0f}")
-        self.but.config(bg=rgbtohex(0, 180, int(self.qual*150)))
+        # if mode == 0:
+        #     self.but.config(text=f"{self.qual:.2f}\n???")
+        # elif mode == 1:
+        #     self.but.config(text=f"{self.qual:.2f}\n{self.oil:.0f}")
+        self.but.config(text=f"{self.oil:.0f}",image=emptyim, compound=BOTTOM, bg=rgbtohex(0, 180, int(self.qual*150)))
 
 class Upgrade:
     """Class for upgradable buildings - horse, silo, mining rig."""
     def __init__(self, master, version, number=0) -> None:
-        self.box = Frame(master, height=100*baseunit, width=78*baseunit)
+        self.box = Frame(master, width=78*baseunit,)# height=100*baseunit)
         self.box.grid_propagate(False)
         self.b_build = Button(self.box, image=emptyim, compound="bottom")
         self.b_upgrade1 = Button(self.box) #image=emptyim, compound="bottom")
@@ -89,7 +94,7 @@ class Upgrade:
         self.l_upgrade2 = Label(self.box, background="#FF00FF")
         self.l_description1 = Label(self.box)
         self.l_description2 = Label(self.box)
-        self.icon = PhotoImage()
+        self.icon = Label(self.box)
         self.version = version
         self.names = dict
         self.cost = int
@@ -118,9 +123,6 @@ class Upgrade:
                     "rig": self.rig}
         possible[version]()
 
-    def assign_image(self):
-        """Assigns image according to version and upgrade level"""
-
     def activate(self):
         """Packs upgrade box into Tk window"""
         self.box.grid(column=self.column, row=0)
@@ -136,6 +138,7 @@ class Upgrade:
 
 
     def level_up(self, upgradename):
+        """Function that upgrades selected stat of the Upgrade and increases the demand for oil in economy."""
         global demand
         if check_money(upgradename['price'][upgradename['level']+1]):
             upgradename['level'] += 1
@@ -167,11 +170,14 @@ class Upgrade:
                 self.l_description1.grid(row=4, column=0, columnspan=2)
                 self.l_description2.grid(row=5, column=0, columnspan=2)
                 toggle_rig(self)
+
+    
     
 # Rig functions
 
     def rig(self) -> None:
         """Sets default values for the "rig" type of upgrade."""
+        self.box.config(height=150*baseunit)
         self.stats = copy.deepcopy(rig_cfg)
         self.names = msg_rig    
         self.text.config(text=self.names['name'], font=("Calibri", 18, "bold"), justify="center")
@@ -184,7 +190,7 @@ class Upgrade:
         
 
         def txt_s():
-            """Modifies text to fit the rig structure"""
+            """Text updating function tailored to rig type of upgrade."""
             self.l_upgrade1.config(text=f"{self.names['speed']} \n{self.stats['speed']['val'][self.stats['speed']['level']]:.2f} x", justify="left")
             self.l_upgrade2.config(text=f"{self.names['capacity']} \n{self.stats['capacity']['val'][self.stats['capacity']['level']]:.0%}", justify="left")
             self.l_description1.config(text=f"{self.names['quality']} {self.stats['quality']:.2f}")
@@ -197,19 +203,22 @@ class Upgrade:
                 self.b_upgrade2.config(text=f"{self.names['upgrade']} \n(${self.stats['capacity']['price'][self.stats['capacity']['level']+1]})")
             else:
                 self.b_upgrade2.config(text=f"{self.names['max_level']}", state=DISABLED)
+            self.icon.config(image=update_img(self))
 
 
         self.update_text = txt_s
         self.update_text()
-        self.text.grid(row=0, column=0, columnspan=2)
+        self.icon.config(image=update_img(self))
+        self.icon.grid(row=0, column=0, columnspan=2)
+        # self.text.grid(row=0, column=0, columnspan=2)
         self.b_build.grid(row=1, column=0, columnspan=2)
 
     def build_rig(self):
-        # Builds mining rig and enables mining funcitonality.
+        """Builds mining rig and enables mining funcitonality."""
         global pos_cache
         # Načte rozkliklé pole s ropou
         tile = oil_fields[pos_cache[0]][pos_cache[1]]
-        tile.but.config(state=DISABLED, bg="yellow") #Vypne a označí pole s ropou
+        tile.but.config(command="", image=images['tile'], compound=BOTTOM) #Vypne a označí pole s ropou
         
         self.pos = pos_cache # Do své pozice nastaví odkaz na pole s ropou které těží
         pos_cache = None # Resetuje označené pole 
@@ -262,7 +271,7 @@ class Upgrade:
 
     def horse(self) -> None:
         """Sets default values for the "horse" type of upgrade."""
-
+        self.box.config(height=80*baseunit)
         def horse_go():
             """Switches horse into active state!"""
             self.active = True
@@ -283,6 +292,7 @@ class Upgrade:
         self.b_build.config(text=f"{self.names['buy']}\n(${self.stats['capacity']['price'][0]})", command=self.buy)
 
         def txt_s():
+            """Text updating function tailored to horse type of upgrade."""
             # self.l_upgrade1.config(text=f"{self.names['speed']} \n{self.stats['speed']} s", justify="left")
             # self.l_upgrade2.config(text=f"{self.names['capacity']} \n{self.stats['capacity']} barelů", justify="left")
         
@@ -296,10 +306,12 @@ class Upgrade:
                 self.b_upgrade2.config(text=f"{self.names['upgrade']} \n(${self.stats['capacity']['price'][self.stats['capacity']['level']+1]})")
             else:
                 self.b_upgrade2.config(text=f"{self.names['max_level']}", state=DISABLED)
+            self.icon.config(image=update_img(self))
 
         self.update_text = txt_s
         self.update_text()
-        self.text.grid(row=0, column=0, columnspan=2)
+        self.icon.grid(row=0, column=0, columnspan=2)
+        # self.text.grid(row=0, column=0, columnspan=2)
         self.b_build.grid(row=1, column=0, columnspan=2)
 
     def goto_city(self):
@@ -317,6 +329,7 @@ class Upgrade:
         # print(self.timer)
     
     def kill_horse(self):
+        """Ends the horse's journey to sell oil and makes it available again."""
         self.active = False        
         self.b_send.config(text=self.names['sell_cmd'], state=ACTIVE)
         # UNFINISHED
@@ -326,15 +339,18 @@ class Upgrade:
         global money, soldoil
         profit = self.stats['oil'] * price
         soldoil += self.stats['oil']
+        log['total_sold'] += self.stats['oil']
         self.stats['oil'] = 0
         money += profit
         moneycounter.config(text=f"${money:.0f}")
+        
         return profit
 
 # Silo functions
 
     def silo(self) -> None:
         """Sets default values for the "silo" type of upgrade."""
+        self.box.config(width=103*baseunit, height=100*baseunit)
         self.names = msg_silo    
         self.text.config(text=self.names['name'], font=("Calibri", 18, "bold"), justify="center")
         self.stats = copy.deepcopy(silo_cfg)
@@ -346,6 +362,7 @@ class Upgrade:
         
 
         def txt_s():
+            """Text updating function tailored to silo type of upgrade."""
             self.l_upgrade1.config(text=f"{self.names['speed']} \n{self.stats['speed']['val'][self.stats['speed']['level']]:.2f} {msg_general['day']}", justify="left")
             self.l_upgrade2.config(text=f"{self.names['capacity']} \n{self.stats['oil']:.2f}/{self.stats['capacity']['val'][self.stats['capacity']['level']]} bar", justify="left")
 
@@ -359,11 +376,12 @@ class Upgrade:
                 self.b_upgrade2.config(text=f"{self.names['upgrade']} \n(${self.stats['capacity']['price'][self.stats['capacity']['level']+1]})")
             else:
                 self.b_upgrade2.config(text=f"{self.names['max_level']}", state=DISABLED)
-
+            self.icon.config(image=update_img(self))
 
         self.update_text = txt_s
         self.update_text()
-        self.text.grid(row=0, column=0, columnspan=2)
+        self.icon.grid(row=0, column=2, rowspan=4)
+        # self.text.grid(row=0, column=0, columnspan=2)
         self.b_build.grid(row=1, column=0, columnspan=2)
 
     def add_oil(self, amt):
@@ -389,10 +407,20 @@ class Upgrade:
             self.timer -= 1
             fine = self.stats['cur_speed']/2
             self.stats['cur_speed'] /= 2
-            print(f"Spillage {fine:.2f}")
+            # print(f"Spillage {fine:.2f}")
         return fine
 
+def update_img(self:Upgrade):
+   posx = min(self.stats['speed']['level'], imgcap-1)
+   posy = min(self.stats['capacity']['level'], imgcap-1)
+   if self.version == "silo":
+       img = images[self.version][posy]
+   else:
+       img = images[self.version][posx][posy]
+   return img
+        
 def rgbtohex(r,g,b):
+    """Conversion function for RGB values into friendy hex representation."""
     return f"#{r:02x}{g:02x}{b:02x}"
 
 def toggle_rigs():  
@@ -401,6 +429,7 @@ def toggle_rigs():
             toggle_rig(well)
 
 def toggle_rig(obj:Upgrade):
+    """Triggers ability to build rigs only if tile is selected."""
     if pos_cache:
         obj.b_send.config(state=ACTIVE)
     else:
@@ -418,6 +447,7 @@ def check_money(price):
 
 #Game round functions    
 def correct_price():
+    """Returns the current market price of oil based on random part and part affected by player's sold oil."""
     global soldoil, oilbuffer, oiltimer
     if soldoil != 0:
         oiltimer += 1
@@ -425,27 +455,29 @@ def correct_price():
     rise = 0
     soldoil -= drop
     oilbuffer += drop
-    cor = oilbuffer * pricedrop
-    if oiltimer > 4:    
+    cor = oilbuffer * pricedrop #player's effect on oil price
+    if oiltimer > 4: #Delay in price rising back up.
         rise = min(oilbuffer, (oiltimer)**(0.5+demand))
         oilbuffer -= rise
     # print(f"Drop in price {drop:.2f}, Rise in price {rise:.2f}, {soldoil:.2f}, {oilbuffer:.2f}")
-    if (soldoil == 0) and (oilbuffer == 0):
+    if (soldoil == 0) and (oilbuffer == 0): #Resets oil timer if player effect on oil price is ended.
         oiltimer = 0
-    r_price = qual_noise((-1,-1, 3*day/yearlen))
+    r_price = qual_noise((-1,-1, 3*day/yearlen)) #random oil price variation
     price = 50 + (100*r_price - cor)
-    if price < 0:
+    if price < 0: #failsafe if player's effect would cause it to go into negative
         price = abs(1 / price)
 
     return price
 
 def update_price():
+    """Updates the current price."""
     global pricedelta, price
     price = correct_price()
-    pricelog.append(price)
+    # pricelog.append(price)
     cur_price.config(text=f"${price:.2f}/bar")
 
 def get_date():
+    """Returns the calendar representation of a given day in year"""
     date = day%365
     date += 1
     res = ""
@@ -476,10 +508,13 @@ def get_date():
     return res
 
 def gametick():
+    """Processes all the necessary calculations done in one in-game day and updates the stats log."""
     global day, dowsers
     day += 1
     if (day % dowserdelay) == 0:
         dowsers += 1
+        plot_price = 0
+        dowser_label.config(text=f"{msg_general['available']} {dowsers}\n {msg_general['plot']} ${plot_price}")
     cur_date.config(text=get_date())
     if day > yearlen:
         end_game()
@@ -495,6 +530,10 @@ def gametick():
         if hrs.active:
             hrs.goto_city()
     update_price()
+    log['spillage_fine'] += spill_fine
+    log['money'] = money
+    log['total_mined'] += dug_oil
+
 
     time.sleep(1/gamespeed)
     
@@ -541,8 +580,14 @@ def load_configs():
     except FileNotFoundError:
         pass
 
+def load_image(key, cap1, cap2, sizex, sizey, path):
+    img = Image.open(f"{path}{key}-{cap1}-{cap2}.png").resize((sizex, sizey)) 
+    return ImageTk.PhotoImage(img) 
+
+
 def start_menu(master):
-    mainim = Label(master, text="PtorOil", font=txt_s, image=emptyim, compound="bottom", height=baseunit*50, width=baseunit*120)
+    """Creates intro screen."""
+    mainim = Label(master, text="PtorOil", font=txt_m, image=emptyim, compound="bottom")#, height=baseunit*50, width=baseunit*120)
     start_game = Button(master, text="Quick Game", command=game_launch)
     quit_game = Button(master, text="Quit", command=mainframe.destroy)
     mainim.pack()
@@ -551,14 +596,22 @@ def start_menu(master):
     
 
 def game_launch():
+    """Launches the main game screen and starts the year pregression thread"""
     menu.grid_remove()
     gameframe.grid()
 
     t1 = threading.Thread(target=timer)
     t1.start()
 
+def get_score():
+    """Returns player's final score"""
+    score = log['money'] - log['loan']
+    fine = spillage_severity*log['spillage_fine']
+    score -= fine
+    return score
 
 def end_game():
+    """Does all the neccessary calculations to end the game and changes window to encscreen with the final score."""
     global money
     print(day)
     game_end.set()
@@ -570,7 +623,7 @@ def end_game():
     money += (endsell*price)
     log['money'] = money
     endnotice = Label(endscreen, text="Konec hry!")
-    results = Label(endscreen, text=f"Skóre: {log['money']- log['loan']:.0f}")
+    results = Label(endscreen, text=f"Skóre: {get_score():.0f}")
     endscreen.grid_rowconfigure(0, weight=3)
     endscreen.grid_rowconfigure(1, weight=1)
     endnotice.grid(row=0)
@@ -581,6 +634,7 @@ def end_game():
 
 # Dimensions functions
 def gamewindow_grid(frm:Frame):
+    #sets up the grid for placing widgets into grid in correct dimensions
     frm.grid_columnconfigure(0, weight=6)
     frm.grid_columnconfigure(1, weight=3)
     frm.grid_columnconfigure(2, weight=7)
@@ -605,6 +659,8 @@ msg_general = {
     "dec" : "Prosinec",
     "bar" : "barelů",
     "day" : "dní",
+    "available" : "Dostupní hledači:",
+    "plot" : "Cena za prohledání:"
     }
 
 msg_horse = {
@@ -643,10 +699,11 @@ msg_silo = {
 
 }
 
+#base configurations for upgrades
 horse_cfg = {"speed" : {"level": 0, "cap": 4, "val": [15, 10, 6, 4, 3], "price": [0, 1999, 5000, 6900, 12300]}, #speed/mining speed
             "capacity" : {"level": 0, "cap": 4, "val": [10, 15, 25, 40, 60], "price": [250, 500, 1000, 250, 600]}, #capacity/mining effectivity
             "quality" : 0, #plot quality
-            "oil" : 0, #remaining oil
+            "oil" : 0, #carried oil
             "cur_speed" : 0, #current mining speed
             }
 
@@ -660,35 +717,37 @@ rig_cfg = {"speed" : {"level": 0, "cap": 4, "val": [15, 10, 6, 4, 3], "price": [
 silo_cfg = {"speed" : {"level": 0, "cap": 4, "val": [15, 10, 6, 4, 3], "price": [0, 1999, 5000, 6900, 12300]}, #speed/mining speed
             "capacity" : {"level": 0, "cap": 4, "val": [0.5, 1, 2, 500, 56], "price": [250, 500, 1000, 250, 600]}, #capacity/mining effectivity
             "quality" : 0, #plot quality
-            "oil" : 0, #remaining oil
-            "cur_speed" : 0, #current mining speed
+            "oil" : 0, #stored oil
+            "cur_speed" : 0, #current overflow
             } 
 
 
 with open("./data/config.json","r", encoding="UTF-8") as cfg_data:
     cfg_values = json.load(cfg_data)
 print(cfg_values["sizex"])
-# config = {"riglimit" : 5}
-# rigs = [0,1]
-# riglimit = 5
-# okno = Tk()
-# x = Tile(okno, (0,0), 1500, 5)
-# okno.mainloop()
 
-baseunit = 2
+baseunit = 3 #base unit for sizing the windows
+imgcap = 3 #max level for images showing
+
+
+
 #Default variables
-money = 2500 #starting money
+money = 25000 #starting money
 dowsers = 3 #starting dowsers
 dowserdelay = 15 #delay between free dowsers
-plot_price = 1000 #reveal price without dowser
+
+plot_base = 1000 #reveal price without dowser
+plot_price = plot_base
+if dowsers > 0:
+    plot_price = 0
 day = 0 #current day
 pricedelta = 0 
 price = 0 #corrent oil price
 oilbuffer = 0 #oil lowering the price
-oiltimer = 0 
+oiltimer = 0 #market timer for oil
 soldoil = 0 #sold oil buffer
 seed = 3 
-spillage_severity = 1 #spillage fine severity
+spillage_severity = 40 #spilage fine per barel spilled
 demand = 0 #speed of price recovery after 
 demand_step = 0.01 #effect of upgrade on price recovery
 pricedrop = 0.3 #how much sold barrel affects price
@@ -699,13 +758,14 @@ log = {'oilbuffer' : 0,
        'total_mined' : 0,
        'total_sold' : 0,
        'spillage_fine' : 0,
-       'loan' : 0,
+       'loan' : money,
        'money' : 0,
        }
 
-gamespeed = 10
+gamespeed = 1
 mainframe = Tk()
 mainframe.geometry(f"{baseunit*640}x{baseunit*360}")
+mainframe.title("PtorOil")
 gameframe = Frame(mainframe, width=baseunit*640, height=baseunit*360,)# bg="green")
 # gameframe.grid_propagate(0)
 menu = Frame(mainframe)
@@ -713,17 +773,22 @@ setup = Frame(mainframe)
 endscreen = Frame(mainframe)
 emptyim = PhotoImage()
 
-txt_s = font.Font(family="TkDefaultFont", size=4+baseunit*4)
-txt_m = font.Font(family="Algerian")
-txt_l = font.Font(family="TkDefaultFont")
+images = {"silo" : [load_image("silo", 1, x+1, baseunit*25, baseunit*50, "./images/") for x in range(imgcap)],
+          "rig" : [[load_image("rig", y+1, x+1, baseunit*50, baseunit*50, "./images/")for x in range(imgcap)] for y in range(imgcap)],
+          "horse" : [[load_image("horse", y+1, x+1, baseunit*50, baseunit*25, "./images/")for x in range(imgcap)] for y in range(imgcap)],
+          "tile" : ImageTk.PhotoImage(Image.open("./images/rig.png").resize((baseunit*18, baseunit*18)))}
+
+txt_s = font.Font(family="TkTextFont", size=2+baseunit*4)
+txt_m = font.Font(family="Algerian", size=15+baseunit*15)
+txt_l = font.Font(family="CMU Serif", size=8+baseunit*8)
 
 
 # gameframe layout
 date_frame = Frame(gameframe, width=240*baseunit, height=40*baseunit)
 bank_frame = Frame(gameframe, width=240*baseunit, height=80*baseunit)
 map_frame = Frame(gameframe, height=240*baseunit, width=240*baseunit)
-rig_frame = Frame(gameframe, width=400*baseunit, height=120*baseunit)#, bg="yellow")
-horse_frame = Frame(gameframe, width=400*baseunit, height=120*baseunit)#, bg="red")
+rig_frame = Frame(gameframe, width=400*baseunit, height=180*baseunit, bg="yellow")
+horse_frame = Frame(gameframe, width=400*baseunit, height=80*baseunit)#, bg="red")
 silo_frame = Frame(gameframe, width=120*baseunit, height=120*baseunit)#, bg="blue")
 
 
@@ -732,7 +797,7 @@ game_end = threading.Event()
 date_frame.grid(row=0, column=0, rowspan=1, columnspan=1, sticky=NSEW)
 bank_frame.grid(row=1, column=0, rowspan=1, columnspan=1, sticky=N)
 map_frame.grid(row=2, column=0, rowspan=2, columnspan=1, sticky=N)
-silo_frame.grid(row=0, column=1, rowspan=2, columnspan=1, sticky=N)
+silo_frame.grid(row=0, column=1, rowspan=2, columnspan=1, sticky=NSEW)
 horse_frame.grid(row=2, column=1, rowspan=1, columnspan=2, sticky=N)
 rig_frame.grid(row=3, column=1, rowspan=1, columnspan=2, sticky=N)
 
@@ -752,12 +817,14 @@ for x in range(5):
     rig_frame.grid_columnconfigure(x, weight=1)
     horse_frame.grid_columnconfigure(x, weight=1)
 # Labels
-moneycounter = Label(bank_frame, text=f"${money:.0f}", font=("Algerian", 35))
-cur_price = Label(date_frame, text=f"${price:.2f}/bar", font=("CMU Serif", 24), padx=baseunit*5)
-cur_date = Label(date_frame, text=get_date(), font=("CMU Serif", 24), padx=baseunit*5)
-moneycounter.grid()
+moneycounter = Label(bank_frame, text=f"${money:.0f}", font=txt_m)
+cur_price = Label(date_frame, text=f"${price:.2f}/bar", font=txt_l, padx=baseunit*5)
+cur_date = Label(date_frame, text=get_date(), font=txt_l, padx=baseunit*5)
+dowser_label = Label(bank_frame, text=f"{msg_general['available']} {dowsers}\n {msg_general['plot']} ${plot_price}", font=txt_s, padx=baseunit*5, justify=RIGHT)
+moneycounter.grid(row=0, column=0)
 cur_price.grid(row=0, column=0, sticky=W)
 cur_date.grid(row=0, column=1, sticky=E)
+dowser_label.grid(row=0, column=1, sticky=E)
 
 yearlen = 365
 
@@ -815,3 +882,4 @@ leng = mapsize
 # plt.show()
 plt.plot(pricelog)
 plt.show()
+print(log)
