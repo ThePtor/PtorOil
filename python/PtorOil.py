@@ -20,7 +20,7 @@ class Tile:
     """Class for oil tiles on map"""
     def __init__(self, master, position, size) -> None:
     
-        self.but = Button(master, font=txt_s, command=self.reveal, width=20*baseunit, height=20*baseunit, image=emptyim, compound='bottom', padx=0, pady=0,)
+        self.but = Button(master, font=txt_s, command=self.reveal, width=int(200*baseunit/mapsize), height=int(200*baseunit/mapsize), image=emptyim, compound='bottom', padx=0, pady=0,)
         self.active = False
         self.pos = position
         self.size = size
@@ -56,7 +56,7 @@ class Tile:
 
     def get_oil(self):
         oil = 4**(2*oil_noise((self.pos[0]/self.size[0], self.pos[1]/self.size[1])))
-        oil *= 100
+        oil *= (100 * oil_richness)
         return oil
 
     def tile_pass(self):
@@ -89,9 +89,9 @@ class Upgrade:
         self.b_upgrade1 = Button(self.box) #image=emptyim, compound="bottom")
         self.b_upgrade2 = Button(self.box) #image=emptyim, compound="bottom")
         self.b_send = Button(self.box, image=emptyim, compound="bottom")
-        self.text = Label(self.box, background="#00FFFF")
-        self.l_upgrade1 = Label(self.box, background="#FF00FF")
-        self.l_upgrade2 = Label(self.box, background="#FF00FF")
+        self.text = Label(self.box)#, background="#00FFFF")
+        self.l_upgrade1 = Label(self.box)#, background="#FF00FF")
+        self.l_upgrade2 = Label(self.box)#, background="#FF00FF")
         self.l_description1 = Label(self.box)
         self.l_description2 = Label(self.box)
         self.icon = Label(self.box)
@@ -218,13 +218,13 @@ class Upgrade:
         global pos_cache
         # Načte rozkliklé pole s ropou
         tile = oil_fields[pos_cache[0]][pos_cache[1]]
-        tile.but.config(command="", image=images['tile'], compound=BOTTOM) #Vypne a označí pole s ropou
+        tile.but.config(command="", image=images['tile'], compound=BOTTOM) #Disables the button and puts rig icon on built tile0
         
-        self.pos = pos_cache # Do své pozice nastaví odkaz na pole s ropou které těží
-        pos_cache = None # Resetuje označené pole 
-        self.available = False # Vypne svou dostupnost
-        self.active = True # Marker pro těžební funkci
-        self.b_send.config(text=self.names['destroy'], fg="red", command=self.destroy_rig)
+        self.pos = pos_cache # puts position from global cache to its cache
+        pos_cache = None # resets global position cache
+        self.available = False # switches of availability for toggling rigs
+        self.active = True # enables mining function for the rig
+        self.b_send.config(text=self.names['destroy'], fg="red", command=self.destroy_rig) # changes building button to destroy rig
         
         self.stats['quality'] = tile.qual
         self.stats['oil'] = tile.oil
@@ -249,7 +249,7 @@ class Upgrade:
         efi = self.stats['capacity']
         spd = self.stats['speed']
         
-        mined = self.stats['quality'] * spd['val'][spd['level']] * (1+ (3**oil_noise((self.pos[0]/mapsize, self.pos[1]/mapsize, day/7))))
+        mined = mining_speed * self.stats['quality'] * spd['val'][spd['level']] * (1+ (3**oil_noise((self.pos[0]/mapsize, self.pos[1]/mapsize, day/7))))
         # print(mined)
         decrease = mined/efi['val'][efi['level']]
         
@@ -306,7 +306,8 @@ class Upgrade:
                 self.b_upgrade2.config(text=f"{self.names['upgrade']} \n(${self.stats['capacity']['price'][self.stats['capacity']['level']+1]})")
             else:
                 self.b_upgrade2.config(text=f"{self.names['max_level']}", state=DISABLED)
-            self.icon.config(image=update_img(self))
+            if not self.active:
+                self.icon.config(image=update_img(self))
 
         self.update_text = txt_s
         self.update_text()
@@ -321,10 +322,13 @@ class Upgrade:
             self.kill_horse()
         elif self.timer <= (self.stats['speed']['val'][self.stats['speed']['level']]/3):
             self.b_send.config(text=f"{self.names['back']} ({self.timer} {msg_general['day']})")
+            self.icon.config(image=images['town'][1])
         elif self.timer <= (self.stats['speed']['val'][self.stats['speed']['level']]/3 + 1):
             self.b_send.config(text=f"+${self.sell_oil():.2f}")
+            self.icon.config(image=images['town'][0])
         else:
             self.b_send.config(text=f"{self.names['forward']} ({self.timer} dní)")
+            self.icon.config(image=images['town'][0])
         #UNFINISHED
         # print(self.timer)
     
@@ -332,6 +336,7 @@ class Upgrade:
         """Ends the horse's journey to sell oil and makes it available again."""
         self.active = False        
         self.b_send.config(text=self.names['sell_cmd'], state=ACTIVE)
+        self.update_text()
         # UNFINISHED
 
     def sell_oil(self):
@@ -381,7 +386,7 @@ class Upgrade:
         self.update_text = txt_s
         self.update_text()
         self.icon.grid(row=0, column=2, rowspan=4)
-        # self.text.grid(row=0, column=0, columnspan=2)
+        self.text.grid(row=0, column=0, columnspan=2)
         self.b_build.grid(row=1, column=0, columnspan=2)
 
     def add_oil(self, amt):
@@ -471,7 +476,7 @@ def correct_price():
 
 def update_price():
     """Updates the current price."""
-    global pricedelta, price
+    global price
     price = correct_price()
     # pricelog.append(price)
     cur_price.config(text=f"${price:.2f}/bar")
@@ -610,6 +615,12 @@ def get_score():
     score -= fine
     return score
 
+def get_log():
+    string = ""
+    for x in log:
+        string += f"{msg_general[x]} {log[x]:.2f} \n"
+    return string
+
 def end_game():
     """Does all the neccessary calculations to end the game and changes window to encscreen with the final score."""
     global money
@@ -622,12 +633,14 @@ def end_game():
             endsell += horse.stats['oil']
     money += (endsell*price)
     log['money'] = money
-    endnotice = Label(endscreen, text="Konec hry!")
-    results = Label(endscreen, text=f"Skóre: {get_score():.0f}")
+    endnotice = Label(endscreen, text="Konec hry!", font=txt_m)
+    score = Label(endscreen, text=f"Skóre: {get_score():.0f}", font=txt_l)
+    results = Label(endscreen, text=get_log(), font=txt_s)
     endscreen.grid_rowconfigure(0, weight=3)
     endscreen.grid_rowconfigure(1, weight=1)
     endnotice.grid(row=0)
-    results.grid(row=1)
+    score.grid(row=1)
+    results.grid(row=2)
     endscreen.grid()
     
 
@@ -660,7 +673,12 @@ msg_general = {
     "bar" : "barelů",
     "day" : "dní",
     "available" : "Dostupní hledači:",
-    "plot" : "Cena za prohledání:"
+    "plot" : "Cena za prohledání:",
+    "total_mined" : "Vytěžená ropa:",
+    "total_sold" : "Prodaná ropa:",
+    "spillage_fine" : "Rozlitá ropa:",
+    "loan" : "Výše půjčky:",
+    "money" : "Peníze:",
     }
 
 msg_horse = {
@@ -700,22 +718,22 @@ msg_silo = {
 }
 
 #base configurations for upgrades
-horse_cfg = {"speed" : {"level": 0, "cap": 4, "val": [15, 10, 6, 4, 3], "price": [0, 1999, 5000, 6900, 12300]}, #speed/mining speed
-            "capacity" : {"level": 0, "cap": 4, "val": [10, 15, 25, 40, 60], "price": [250, 500, 1000, 250, 600]}, #capacity/mining effectivity
+horse_cfg = {"speed" : {"level": 0, "cap": 4, "val": [15, 10, 6, 4, 3], "price": [0, 750, 1250, 2000, 3000]}, #speed/mining speed
+            "capacity" : {"level": 0, "cap": 4, "val": [10, 15, 25, 40, 60], "price": [250, 500, 1000, 1500, 2500]}, #capacity/mining effectivity
             "quality" : 0, #plot quality
             "oil" : 0, #carried oil
             "cur_speed" : 0, #current mining speed
             }
 
-rig_cfg = {"speed" : {"level": 0, "cap": 4, "val": [15, 10, 6, 4, 3], "price": [0, 1999, 5000, 6900, 12300]}, #speed/mining speed
-            "capacity" : {"level": 0, "cap": 4, "val": [0.5, 1, 2, 500, 56], "price": [250, 500, 1000, 250, 600]}, #capacity/mining effectivity
+rig_cfg = {"speed" : {"level": 0, "cap": 4, "val": [1, 1.2, 1.5, 2, 2.5], "price": [0, 2000, 3000, 4500, 9000]}, #speed/mining speed
+            "capacity" : {"level": 0, "cap": 4, "val": [0.5, 0.75, 0.9, 0.99, 1], "price": [1000, 1000, 1500, 2250, 3500]}, #capacity/mining effectivity
             "quality" : 0, #plot quality
             "oil" : 0, #remaining oil
             "cur_speed" : 0, #current mining speed
             } 
 
-silo_cfg = {"speed" : {"level": 0, "cap": 4, "val": [15, 10, 6, 4, 3], "price": [0, 1999, 5000, 6900, 12300]}, #speed/mining speed
-            "capacity" : {"level": 0, "cap": 4, "val": [0.5, 1, 2, 500, 56], "price": [250, 500, 1000, 250, 600]}, #capacity/mining effectivity
+silo_cfg = {"speed" : {"level": 0, "cap": 4, "val": [0, 3, 7, 10, 14], "price": [0, 750, 2500, 4000, 5500]}, #speed/mining speed
+            "capacity" : {"level": 0, "cap": 4, "val": [50, 125, 250, 500, 750], "price": [2500, 1750, 3000, 4500, 8000]}, #capacity/mining effectivity
             "quality" : 0, #plot quality
             "oil" : 0, #stored oil
             "cur_speed" : 0, #current overflow
@@ -732,37 +750,42 @@ imgcap = 3 #max level for images showing
 
 
 #Default variables
-money = 25000 #starting money
+money = 2500 #starting money
 dowsers = 3 #starting dowsers
 dowserdelay = 15 #delay between free dowsers
-
+yearlen = 365 # length of game in days
+gamespeed = 1 # speed of game (days/s)
 plot_base = 1000 #reveal price without dowser
-plot_price = plot_base
-if dowsers > 0:
-    plot_price = 0
+plot_price = 0 #starting plot purchase price
 day = 0 #current day
-pricedelta = 0 
 price = 0 #corrent oil price
 oilbuffer = 0 #oil lowering the price
 oiltimer = 0 #market timer for oil
 soldoil = 0 #sold oil buffer
-seed = 3 
+seed = 3 # default seed
 spillage_severity = 40 #spilage fine per barel spilled
+mining_speed = 0.7 # global mining speed
+oil_richness = 1 # global oil field richness
+mapsize = 15 # size of oil map
 demand = 0 #speed of price recovery after 
 demand_step = 0.01 #effect of upgrade on price recovery
 pricedrop = 0.3 #how much sold barrel affects price
-pricelog = []
-# Log variables
+# pricelog = []
 
-log = {'oilbuffer' : 0,
-       'total_mined' : 0,
+seed = random.random()
+pos_cache = None
+qual_noise = PerlinNoise(4, seed)
+oil_noise = PerlinNoise(2, 2*seed)
+
+# Log dictionary
+log = {'total_mined' : 0,
        'total_sold' : 0,
        'spillage_fine' : 0,
        'loan' : money,
        'money' : 0,
        }
 
-gamespeed = 1
+
 mainframe = Tk()
 mainframe.geometry(f"{baseunit*640}x{baseunit*360}")
 mainframe.title("PtorOil")
@@ -773,21 +796,23 @@ setup = Frame(mainframe)
 endscreen = Frame(mainframe)
 emptyim = PhotoImage()
 
-images = {"silo" : [load_image("silo", 1, x+1, baseunit*25, baseunit*50, "./images/") for x in range(imgcap)],
-          "rig" : [[load_image("rig", y+1, x+1, baseunit*50, baseunit*50, "./images/")for x in range(imgcap)] for y in range(imgcap)],
-          "horse" : [[load_image("horse", y+1, x+1, baseunit*50, baseunit*25, "./images/")for x in range(imgcap)] for y in range(imgcap)],
-          "tile" : ImageTk.PhotoImage(Image.open("./images/rig.png").resize((baseunit*18, baseunit*18)))}
+images = {"silo" : [load_image("silo", 1, x+1, baseunit*25, baseunit*50, "./images/") for x in range(imgcap)], #silo images
+          "rig" : [[load_image("rig", y+1, x+1, baseunit*50, baseunit*50, "./images/")for x in range(imgcap)] for y in range(imgcap)], #rig images
+          "horse" : [[load_image("horse", y+1, x+1, baseunit*50, baseunit*25, "./images/")for x in range(imgcap)] for y in range(imgcap)], #horse images
+          "tile" : ImageTk.PhotoImage(Image.open("./images/rig.png").resize((int(baseunit*180/mapsize), int(baseunit*180/mapsize)))), #map rig image
+          "town" : [ImageTk.PhotoImage(Image.open("./images/town.png").resize((baseunit*50, baseunit*25))), ImageTk.PhotoImage(Image.open("./images/back.png").resize((baseunit*50, baseunit*25)))], # direction images
+          }
 
-txt_s = font.Font(family="TkTextFont", size=2+baseunit*4)
-txt_m = font.Font(family="Algerian", size=15+baseunit*15)
-txt_l = font.Font(family="CMU Serif", size=8+baseunit*8)
+txt_s = font.Font(family="TkTextFont", size=2+baseunit*4) #small text
+txt_m = font.Font(family="Algerian", size=15+baseunit*15) #large text
+txt_l = font.Font(family="CMU Serif", size=8+baseunit*8) #medium text
 
 
 # gameframe layout
 date_frame = Frame(gameframe, width=240*baseunit, height=40*baseunit)
 bank_frame = Frame(gameframe, width=240*baseunit, height=80*baseunit)
 map_frame = Frame(gameframe, height=240*baseunit, width=240*baseunit)
-rig_frame = Frame(gameframe, width=400*baseunit, height=180*baseunit, bg="yellow")
+rig_frame = Frame(gameframe, width=400*baseunit, height=180*baseunit)#, bg="yellow")
 horse_frame = Frame(gameframe, width=400*baseunit, height=80*baseunit)#, bg="red")
 silo_frame = Frame(gameframe, width=120*baseunit, height=120*baseunit)#, bg="blue")
 
@@ -816,6 +841,9 @@ bank_frame.grid_columnconfigure(1, weight=1)
 for x in range(5):
     rig_frame.grid_columnconfigure(x, weight=1)
     horse_frame.grid_columnconfigure(x, weight=1)
+silo_frame.grid_columnconfigure(0, weight=1)
+silo_frame.grid_rowconfigure(0, weight=1)
+
 # Labels
 moneycounter = Label(bank_frame, text=f"${money:.0f}", font=txt_m)
 cur_price = Label(date_frame, text=f"${price:.2f}/bar", font=txt_l, padx=baseunit*5)
@@ -826,35 +854,12 @@ cur_price.grid(row=0, column=0, sticky=W)
 cur_date.grid(row=0, column=1, sticky=E)
 dowser_label.grid(row=0, column=1, sticky=E)
 
-yearlen = 365
 
-#Startup variables
+load_configs() #if possible loads configs from .json files
 
-
-
-
-
-
-levelcap = 2
-seed = random.random()
-mapsize = 10
-pos_cache = None
-qual_noise = PerlinNoise(4, seed)
-oil_noise = PerlinNoise(2, 2*seed)
-# noise = PerlinNoise(4, random.random())
-
-
-load_configs()
+# Creates all boxes in gameframe
 
 oil_fields = [[Tile(map_frame, (x,y), (mapsize, mapsize)) for y in range(mapsize)] for x in range(mapsize)]
-
-# x = Upgrade(y, "horse", 1)
-# x2 = Upgrade(y, "horse", 2)
-
-
-
-
-
 oil_silo = Upgrade(silo_frame, "silo")
 oil_silo.buy(True)
 herd = [Upgrade(horse_frame, "horse", x) for x in range(5)]
@@ -872,7 +877,7 @@ mainframe.mainloop()
 
 game_end.set()
 print("69")
-leng = mapsize
+# leng = mapsize
 # vallist = [[4**(2*oil_noise((x/leng, y/leng))) for y in range(leng)] for x in range(leng)]
 # print(sum(vallist)/len(vallist))
 # plt.imshow(vallist, cmap='gray')
@@ -880,6 +885,6 @@ leng = mapsize
 # vallist = [[1*(1.2+qual_noise((x/leng, y/leng))) for y in range(leng)] for x in range(leng)]
 # plt.imshow(vallist, cmap='gray')
 # plt.show()
-plt.plot(pricelog)
-plt.show()
+# plt.plot(pricelog)
+# plt.show()
 print(log)
