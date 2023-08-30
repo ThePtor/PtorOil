@@ -1,6 +1,14 @@
 # PtorOil
 Zápočtový program
 # Uživatelská dokumentace
+## Jak spustit program
+Program lze spustit buďto přiloženým dávkovacím souborem, nebo přes příkazovou řádku spuštěnou z hlavní složky programu pomocí příkazu
+
+    python3 ./python/PtorOil.py
+
+Toto bude fungovat za předpokladu, že jsou nainstalované moduly pythonu uvedené v souboru 
+
+    ~/PtorOil-main/python/requirements.txt
 ## Úvodní obrazovka
 **Quick game** - spustí jedno herní kolo s náhodně vybraným seedem
 
@@ -45,52 +53,46 @@ Těžební veže těží ropu z polí na kterých jsou postavené. Rychlost tě�
 
 **Efektivita** - poměr mezi množstvím ropy, které věž vytěží a které ubyde ze zásob v poli
 
-# Neuživatelská dokumentace
-## Struktury v programu
-### Class: Tile
-Vlastní struktura pro políčka na mapě, každé z nich má dva hlavní atributy *quality* a *oil*, které určují kvalitu daného pole, respektive množství ropy v poli. Mapa se sestává z dvourozměrného sezamu těchto polí, u nichž jsou jejich atributy určeny pomocí knihovny PerliNoise, která generuje náhodné hodnoty obou atributů ze zadaného seedu a jejich pozice v tomto seznamu.
-
-### Class: Upgrade
-Druhá vlastní struktura, pro vylepšitelné stavby ve hře. Ty obsahují reprezentaci svého obsahu pomocí Tkinter. Jejich atributy jsou uloženy ve slovníku *stats*,  který obshuje vnořené slovníky pro jednotlivé proměnné. Tato třída je při inicializaci upravena ze základního vzoru pro potřeby jednotlivých druhů staveb. Struktura upgradů lze nastavit přes konfigurační soubory .json s odpovídajícím názvem upgradu, ty mají přednost při načítání konfigurace před přednastavenými vzory.
-
-### Slovníky
-Slovníky slouží jednak k ukládání proměnných, ale druhak i k centralizaci programu, kdy je veškerý text soustředěn do slovníků pro jednoduchost úprav.
-
-## Vybrané funkce
-### gametick()
-Funkce která spravuje veškerý posun v čase o jeden den vpřed. Od úpravy ceny a data po těžbu a prodej ropy. Běží na vlastním vlákně do doby, než je zavřeno okno nebo než hra skončí.
-
-### correct_price()
-Funkce, která spravuje cenu ropy na trhu. Cena se skládá z náhodné složky, opět přes PerlinNoise, ale hráč také dočasně snižuje cenu ropy tím, že ji prodává. V moment prodeje se množství prodané ropy exponenciální ryclostí dostává na trh, v důsledku čehož klesá cena. Se zpožděním ropa z trhu mizí, rychlostí podstatně nižší, v důsledku čehož cena opět stoupá zpět na základní hodnotu náhodné složky.
-
 ## Vstupní data
-Vstupními daty je klikání na tlačítka za účelem získání co nejvyššího skóre
+Vstupními daty je klikání na tlačítka za účelem získání co nejvyššího skóre. Způsob jakým je možné tohoto dosáhnout je ponechán na hráči.
 
 ## Výstupní data
 Výstupními daty je jedna hodnota typu float, která značí dosažené skóre.
+
+## Co se nestihlo (došla vůle)
+Není doděláno ukládání jakýchkoliv savů, takže hra je 100% arkádová. Také není hotová možnost vytvořit si hru s vlastními vstupními parametry. Zpřehlednění a vyšší efektivita je také možná. 
+
+Chybí ošetřit některé případy, kdy jsou poškozené jiné herní soubory(nelze najít obrázky atp.) 
+
+### Jak dodělat to, co se nestihlo
+Možnost vytvořit si hru podle vlastních parametrů by zahrnovalo vytvoření další obrazovky, kam hráč zadá požadované úpravy své hry, a jejich načtení do proměnnýchh používaných pro hru.
+
+Pro ukládání savů je potřeba implementovat způsob, jak uložit a načíst pole pozemků, aby zůstaly jejich hodnoty ve stejném stavu po načtení jako byly při uložení.
+
+Prostor pro zefektivnění je snížení počtu slovníku z počtu množství vylepšovatelných stavech na jeden vzorový pro každý druh stavby, ze kterého se  by se čerpaly hodnoty příslušné pro každý level upgradu. 
 
 # ToDo list
 - [ ] Dostat zápočet
 
 ## Neprogramování
-- [ ] Playtesting
-- [ ] Balancování
-- [ ] Hezké obrázky
+- [x] Playtesting
+- [x] Balancování
+- [x] Hezké obrázky
 
 ## Programování
 - [ ] Práce s vnějšími soubory
 - [ ] Okno GUI
 - [ ] Setup screen
-- [ ] Herní kolo
+- [x] Herní kolo
 
 ### Práce s vnějšími soubory
-- [ ] Čtení a zápis config souborů
+- [x] Čtení a zápis config souborů
 - [ ] *Optional: Čtení a zápis ze save souborů*
 - [ ] *Optional: Zápis do leaderboard soborů*
 - [ ] *Optional: Save on exit*
 
 ### Okno GUI
-- [ ] Rozdělení okna na panely
+- [x] Rozdělení okna na panely
 - [ ] Automatický resize podle velikosti
 - [ ] Settings panel
 
@@ -100,11 +102,11 @@ Výstupními daty je jedna hodnota typu float, která značí dosažené skóre.
 - [ ] *Optional: Načíst hru ze souboru*
 
 ### Herní kolo
-- [ ] Implementace náhodných funkcí - perlin noise
-- [ ] Timer kola
-- [ ] Fungování ingame ekonomiky
+- [x] Implementace náhodných funkcí - perlin noise
+- [x] Timer kola
+- [x] Fungování ingame ekonomiky
 - [x] Objekty
-- [ ] Grafika
+- [x] Grafika
 
 ### Objekty
 - [x] Ropná věž
